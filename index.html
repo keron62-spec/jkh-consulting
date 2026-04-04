@@ -3,12 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Amplitude Demo | Jeremy Harrilal</title>
+    <title>Jeremy Harrilal | Operations & Analytics Professional</title>
     
-    <!-- Modern Amplitude SDK (v2) with your API key -->
+    <!-- Modern Amplitude SDK (v2) -->
     <script src="https://cdn.amplitude.com/script/61a7757800aeb4ea0e6f5471d9af5704.js"></script>
     <script>
-        // Initialize Amplitude with configuration
         window.amplitude.init('61a7757800aeb4ea0e6f5471d9af5704', {
             fetchRemoteConfig: true,
             autocapture: {
@@ -28,7 +27,7 @@
                 }
             }
         });
-        console.log('✅ Modern Amplitude SDK initialized with API key');
+        console.log('✅ Amplitude SDK initialized');
     </script>
     
     <style>
@@ -37,41 +36,135 @@
             padding: 0;
             box-sizing: border-box;
         }
+        
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            padding: 20px;
-        }
-        .container {
-            background: white;
-            border-radius: 24px;
-            padding: 48px;
-            max-width: 600px;
-            width: 100%;
-            text-align: center;
-            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
-        }
-        h1 {
             color: #333;
-            margin-bottom: 16px;
-            font-size: 2rem;
-        }
-        p {
-            color: #666;
-            margin-bottom: 32px;
             line-height: 1.6;
         }
+        
+        /* Hero Section Styles */
+        .hero {
+            text-align: center;
+            padding: 80px 20px;
+            background: linear-gradient(135deg, #f5f7fa 0%, #e4e8f0 100%);
+            border-bottom: 1px solid #ddd;
+        }
+        
+        .hero h1 {
+            font-size: 48px;
+            margin-bottom: 16px;
+            color: #1a1a2e;
+        }
+        
+        .hero .tagline {
+            font-size: 24px;
+            font-weight: 500;
+            color: #4a4a6a;
+            margin-bottom: 16px;
+        }
+        
+        .hero .subheadline {
+            font-size: 18px;
+            color: #666;
+            max-width: 600px;
+            margin: 0 auto 32px;
+        }
+        
+        .cta-buttons {
+            display: flex;
+            gap: 16px;
+            justify-content: center;
+            margin-bottom: 48px;
+            flex-wrap: wrap;
+        }
+        
+        .btn-primary, .btn-secondary {
+            padding: 12px 28px;
+            border-radius: 30px;
+            text-decoration: none;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            display: inline-block;
+        }
+        
+        .btn-primary {
+            background: #4a6cf7;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        
+        .btn-primary:hover {
+            background: #3a5ce0;
+            transform: translateY(-2px);
+        }
+        
+        .btn-secondary {
+            background: transparent;
+            color: #4a6cf7;
+            border: 2px solid #4a6cf7;
+            cursor: pointer;
+        }
+        
+        .btn-secondary:hover {
+            background: #4a6cf7;
+            color: white;
+        }
+        
+        .metrics {
+            display: flex;
+            justify-content: center;
+            gap: 48px;
+            flex-wrap: wrap;
+        }
+        
+        .metric {
+            text-align: center;
+        }
+        
+        .metric .number {
+            display: block;
+            font-size: 32px;
+            font-weight: 700;
+            color: #1a1a2e;
+        }
+        
+        .metric .label {
+            font-size: 14px;
+            color: #666;
+        }
+        
+        /* Demo Section Styles */
+        .demo-section {
+            padding: 60px 20px;
+            background: white;
+            text-align: center;
+        }
+        
+        .demo-section h2 {
+            font-size: 32px;
+            margin-bottom: 16px;
+            color: #1a1a2e;
+        }
+        
+        .demo-section p {
+            color: #666;
+            margin-bottom: 32px;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        
         .button-group {
             display: flex;
             gap: 20px;
             justify-content: center;
             flex-wrap: wrap;
+            margin-bottom: 32px;
         }
-        button {
+        
+        .demo-btn {
             padding: 14px 32px;
             font-size: 16px;
             font-weight: 600;
@@ -80,55 +173,112 @@
             cursor: pointer;
             transition: transform 0.2s, box-shadow 0.2s;
         }
-        button:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
-        }
-        .btn-primary {
+        
+        .demo-btn-primary {
             background: #667eea;
             color: white;
         }
-        .btn-secondary {
+        
+        .demo-btn-secondary {
             background: #48bb78;
             color: white;
         }
+        
+        .demo-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+        }
+        
         .status {
-            margin-top: 32px;
             padding: 12px;
             background: #f7fafc;
             border-radius: 12px;
             color: #4a5568;
             font-size: 14px;
+            max-width: 400px;
+            margin: 0 auto;
         }
+        
         footer {
-            margin-top: 24px;
-            font-size: 12px;
+            text-align: center;
+            padding: 40px 20px;
+            background: #1a1a2e;
             color: #a0aec0;
+            font-size: 14px;
+        }
+        
+        @media (max-width: 768px) {
+            .hero h1 {
+                font-size: 36px;
+            }
+            .hero .tagline {
+                font-size: 20px;
+            }
+            .metrics {
+                gap: 24px;
+            }
+            .metric .number {
+                font-size: 24px;
+            }
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <h1>🚀 Amplitude Analytics Demo</h1>
+
+    <!-- Hero Section -->
+    <section class="hero">
+        <h1>Jeremy Harrilal</h1>
+        <p class="tagline">Operations & Analytics Professional</p>
+        <p class="subheadline">I help organizations turn complexity into clarity.</p>
+        
+        <div class="cta-buttons">
+            <a href="#" class="btn-primary" id="resume-btn">View Resume</a>
+            <a href="#" class="btn-secondary" id="portfolio-btn">View Portfolio</a>
+        </div>
+        
+        <div class="metrics">
+            <div class="metric">
+                <span class="number">5+</span>
+                <span class="label">Years Experience</span>
+            </div>
+            <div class="metric">
+                <span class="number">26</span>
+                <span class="label">Countries</span>
+            </div>
+            <div class="metric">
+                <span class="number">1,500+</span>
+                <span class="label">Trained</span>
+            </div>
+            <div class="metric">
+                <span class="number">54%</span>
+                <span class="label">Churn Reduction</span>
+            </div>
+        </div>
+    </section>
+
+    <!-- Amplitude Analytics Demo Section -->
+    <section class="demo-section">
+        <h2>📊 Amplitude Analytics Demo</h2>
         <p>Click a button below to see real-time event tracking in action.<br>Each click sends data to Amplitude.</p>
         
         <div class="button-group">
-            <button id="signup-btn" class="btn-primary">📝 Sign Up</button>
-            <button id="demo-btn" class="btn-secondary">🎥 Request Demo</button>
+            <button id="signup-btn" class="demo-btn demo-btn-primary">📝 Sign Up</button>
+            <button id="demo-btn" class="demo-btn demo-btn-secondary">🎥 Request Demo</button>
         </div>
         
         <div class="status" id="status-message">
             Click a button to track an event. Check the browser console (F12) for details.
         </div>
-        
-        <footer>
-            Amplitude Implementation | Jeremy Harrilal | Modern SDK (v2) with Autocapture
-        </footer>
-    </div>
+    </section>
 
-    <!-- Custom Event Tracking Script -->
+    <footer>
+        <p>Jeremy Harrilal | Operations & Analytics Professional</p>
+        <p>JKH Consulting</p>
+    </footer>
+
+    <!-- Tracking Script -->
     <script>
-        // Wait for Amplitude to be fully ready
+        // Wait for Amplitude to be ready
         function waitForAmplitude(callback) {
             if (typeof window.amplitude !== 'undefined' && typeof window.amplitude.track === 'function') {
                 callback();
@@ -140,9 +290,14 @@
         waitForAmplitude(function() {
             console.log('🎯 Amplitude SDK ready — adding custom event tracking');
             
-            // Get buttons
+            // Hero section buttons
+            const resumeBtn = document.getElementById('resume-btn');
+            const portfolioBtn = document.getElementById('portfolio-btn');
+            
+            // Demo section buttons
             const signupBtn = document.getElementById('signup-btn');
             const demoBtn = document.getElementById('demo-btn');
+            
             const statusDiv = document.getElementById('status-message');
             
             function updateStatus(message, isSuccess = true) {
@@ -151,35 +306,63 @@
                 statusDiv.style.color = isSuccess ? '#276749' : '#c53030';
             }
             
-            // Track Sign Up button click with custom properties
+            // Track Hero CTA clicks
+            if (resumeBtn) {
+                resumeBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    window.amplitude.track('CTA Click', {
+                        button: 'View Resume',
+                        section: 'Hero',
+                        page: 'JKH Consulting',
+                        timestamp: new Date().toISOString()
+                    });
+                    console.log('✅ Tracked: View Resume clicked');
+                    updateStatus('✅ "View Resume" tracked! This is a demo — resume download coming soon.');
+                });
+            }
+            
+            if (portfolioBtn) {
+                portfolioBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    window.amplitude.track('CTA Click', {
+                        button: 'View Portfolio',
+                        section: 'Hero',
+                        page: 'JKH Consulting',
+                        timestamp: new Date().toISOString()
+                    });
+                    console.log('✅ Tracked: View Portfolio clicked');
+                    updateStatus('✅ "View Portfolio" tracked! Portfolio page coming soon.');
+                });
+            }
+            
+            // Track Demo CTA clicks
             if (signupBtn) {
                 signupBtn.addEventListener('click', function() {
                     window.amplitude.track('CTA Click', {
                         button: 'Sign Up',
-                        page: 'Landing Page',
-                        url: window.location.href,
+                        section: 'Amplitude Demo',
+                        page: 'JKH Consulting',
                         timestamp: new Date().toISOString()
                     });
-                    console.log('✅ Custom event tracked: Sign Up clicked');
-                    updateStatus('✅ "Sign Up" clicked! Custom event sent to Amplitude. Autocapture also tracks this click.');
+                    console.log('✅ Tracked: Sign Up clicked');
+                    updateStatus('✅ "Sign Up" clicked! Event sent to Amplitude.');
                 });
             }
             
-            // Track Request Demo button click with custom properties
             if (demoBtn) {
                 demoBtn.addEventListener('click', function() {
                     window.amplitude.track('CTA Click', {
                         button: 'Request Demo',
-                        page: 'Landing Page',
-                        url: window.location.href,
+                        section: 'Amplitude Demo',
+                        page: 'JKH Consulting',
                         timestamp: new Date().toISOString()
                     });
-                    console.log('✅ Custom event tracked: Request Demo clicked');
-                    updateStatus('✅ "Request Demo" clicked! Custom event sent to Amplitude. Autocapture also tracks this click.');
+                    console.log('✅ Tracked: Request Demo clicked');
+                    updateStatus('✅ "Request Demo" clicked! Event sent to Amplitude.');
                 });
             }
             
-            console.log('🎯 Custom tracking ready — buttons will send both autocapture and custom events');
+            console.log('🎯 All tracking ready');
         });
     </script>
 </body>
