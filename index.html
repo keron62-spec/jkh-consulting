@@ -1,9 +1,14 @@
+<!DOCTYPE html>
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Jeremy Harrilal | Operations & Analytics Professional</title>
+    <title>Jeremy Harrilal | Operations & Analytics</title>
     
-    <!-- Google tag (gtag.js) -->
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Google Analytics -->
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-L3589N2B7D"></script>
     <script>
         window.dataLayer = window.dataLayer || [];
@@ -12,32 +17,31 @@
         gtag('config', 'G-L3589N2B7D');
     </script>
     
-    <!-- Modern Amplitude SDK (v2) -->
+    <!-- Amplitude SDK -->
     <script src="https://cdn.amplitude.com/script/61a7757800aeb4ea0e6f5471d9af5704.js"></script>
     <script>
         window.amplitude.init('61a7757800aeb4ea0e6f5471d9af5704', {
             fetchRemoteConfig: true,
             autocapture: {
-                attribution: true,
-                fileDownloads: true,
-                formInteractions: true,
                 pageViews: true,
                 sessions: true,
-                elementInteractions: true,
-                networkTracking: true,
-                webVitals: true,
-                frustrationInteractions: {
-                    thrashedCursor: true,
-                    errorClicks: true,
-                    deadClicks: true,
-                    rageClicks: true
-                }
+                elementInteractions: true
             }
         });
-        console.log('✅ Amplitude SDK initialized');
     </script>
     
     <style>
+        :root {
+            --primary: #1a365d;
+            --primary-light: #2b6cb0;
+            --accent: #4a6cf7;
+            --accent-hover: #3a5ce0;
+            --gray: #718096;
+            --gray-light: #f7fafc;
+            --dark: #1a202c;
+            --white: #ffffff;
+        }
+        
         * {
             margin: 0;
             padding: 0;
@@ -45,35 +49,79 @@
         }
         
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
-            color: #333;
+            font-family: 'Inter', -apple-system, sans-serif;
+            color: var(--dark);
             line-height: 1.6;
+            background: var(--white);
         }
         
-        /* Hero Section Styles */
+        /* Navigation */
+        .navbar {
+            position: sticky;
+            top: 0;
+            background: rgba(255,255,255,0.95);
+            backdrop-filter: blur(10px);
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            padding: 16px 32px;
+            z-index: 1000;
+        }
+        
+        .nav-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 16px;
+        }
+        
+        .logo {
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--primary);
+            text-decoration: none;
+        }
+        
+        .nav-links {
+            display: flex;
+            gap: 32px;
+        }
+        
+        .nav-links a {
+            text-decoration: none;
+            color: var(--dark);
+            font-weight: 500;
+            transition: color 0.2s;
+        }
+        
+        .nav-links a:hover {
+            color: var(--accent);
+        }
+        
+        /* Hero Section */
         .hero {
             text-align: center;
             padding: 80px 20px;
-            background: linear-gradient(135deg, #f5f7fa 0%, #e4e8f0 100%);
-            border-bottom: 1px solid #ddd;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
         }
         
         .hero h1 {
-            font-size: 48px;
+            font-size: 56px;
             margin-bottom: 16px;
-            color: #1a1a2e;
+            letter-spacing: -0.02em;
         }
         
         .hero .tagline {
             font-size: 24px;
-            font-weight: 500;
-            color: #4a4a6a;
+            opacity: 0.95;
             margin-bottom: 16px;
         }
         
         .hero .subheadline {
             font-size: 18px;
-            color: #666;
+            opacity: 0.9;
             max-width: 600px;
             margin: 0 auto 32px;
         }
@@ -83,40 +131,35 @@
             gap: 16px;
             justify-content: center;
             margin-bottom: 48px;
-            flex-wrap: wrap;
         }
         
         .btn-primary, .btn-secondary {
-            padding: 12px 28px;
-            border-radius: 30px;
+            padding: 12px 32px;
+            border-radius: 40px;
             text-decoration: none;
             font-weight: 600;
             transition: all 0.3s ease;
-            display: inline-block;
         }
         
         .btn-primary {
-            background: #4a6cf7;
-            color: white;
-            border: none;
-            cursor: pointer;
+            background: white;
+            color: #667eea;
         }
         
         .btn-primary:hover {
-            background: #3a5ce0;
             transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.2);
         }
         
         .btn-secondary {
             background: transparent;
-            color: #4a6cf7;
-            border: 2px solid #4a6cf7;
-            cursor: pointer;
+            color: white;
+            border: 2px solid white;
         }
         
         .btn-secondary:hover {
-            background: #4a6cf7;
-            color: white;
+            background: white;
+            color: #667eea;
         }
         
         .metrics {
@@ -126,111 +169,172 @@
             flex-wrap: wrap;
         }
         
-        .metric {
-            text-align: center;
-        }
-        
         .metric .number {
-            display: block;
-            font-size: 32px;
+            font-size: 36px;
             font-weight: 700;
-            color: #1a1a2e;
+            display: block;
         }
         
         .metric .label {
             font-size: 14px;
-            color: #666;
+            opacity: 0.85;
         }
         
-        /* Demo Section Styles */
-        .demo-section {
+        /* Container */
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
             padding: 60px 20px;
-            background: white;
+        }
+        
+        /* Section Headers */
+        .section-title {
+            font-size: 32px;
+            text-align: center;
+            margin-bottom: 48px;
+            color: var(--primary);
+        }
+        
+        .section-title:after {
+            content: '';
+            display: block;
+            width: 60px;
+            height: 3px;
+            background: var(--accent);
+            margin: 16px auto 0;
+            border-radius: 2px;
+        }
+        
+        /* About Section */
+        .about-content {
+            max-width: 800px;
+            margin: 0 auto;
             text-align: center;
         }
         
-        .demo-section h2 {
-            font-size: 32px;
+        .about-text {
+            font-size: 18px;
+            color: var(--gray);
+            line-height: 1.8;
+            margin-bottom: 24px;
+        }
+        
+        .about-highlight {
+            background: linear-gradient(120deg, #f0f4ff 0%, #f0f4ff 40%, transparent 60%);
+            padding: 0 4px;
+            font-weight: 500;
+            color: var(--primary);
+        }
+        
+        /* Featured Work Grid */
+        .projects-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 32px;
+            margin-top: 24px;
+        }
+        
+        .card {
+            background: var(--white);
+            border-radius: 16px;
+            padding: 28px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            transition: all 0.3s ease;
+            border: 1px solid #e2e8f0;
+        }
+        
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1);
+        }
+        
+        .card-icon {
+            font-size: 40px;
             margin-bottom: 16px;
-            color: #1a1a2e;
         }
         
-        .demo-section p {
-            color: #666;
-            margin-bottom: 32px;
-            max-width: 600px;
-            margin-left: auto;
-            margin-right: auto;
+        .card h3 {
+            font-size: 20px;
+            margin-bottom: 12px;
+            color: var(--primary);
         }
         
-        .button-group {
-            display: flex;
-            gap: 20px;
-            justify-content: center;
-            flex-wrap: wrap;
-            margin-bottom: 32px;
+        .card p {
+            color: var(--gray);
+            margin-bottom: 20px;
+            line-height: 1.5;
         }
         
-        .demo-btn {
-            padding: 14px 32px;
-            font-size: 16px;
+        .card-link {
+            color: var(--accent);
+            text-decoration: none;
             font-weight: 600;
-            border: none;
-            border-radius: 50px;
-            cursor: pointer;
-            transition: transform 0.2s, box-shadow 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
         }
         
-        .demo-btn-primary {
-            background: #667eea;
+        .card-link:hover {
+            gap: 12px;
+        }
+        
+        /* View All Button */
+        .view-all {
+            text-align: center;
+            margin-top: 48px;
+        }
+        
+        .btn-outline {
+            display: inline-block;
+            padding: 12px 32px;
+            border: 2px solid var(--accent);
+            border-radius: 40px;
+            color: var(--accent);
+            text-decoration: none;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-outline:hover {
+            background: var(--accent);
             color: white;
         }
         
-        .demo-btn-secondary {
-            background: #48bb78;
-            color: white;
-        }
-        
-        .demo-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
-        }
-        
-        .status {
-            padding: 12px;
-            background: #f7fafc;
-            border-radius: 12px;
-            color: #4a5568;
-            font-size: 14px;
-            max-width: 400px;
-            margin: 0 auto;
-        }
-        
+        /* Footer */
         footer {
+            background: var(--dark);
+            color: var(--gray-light);
             text-align: center;
             padding: 40px 20px;
-            background: #1a1a2e;
-            color: #a0aec0;
-            font-size: 14px;
         }
         
+        /* Responsive */
         @media (max-width: 768px) {
             .hero h1 {
                 font-size: 36px;
             }
-            .hero .tagline {
-                font-size: 20px;
+            .nav-links {
+                gap: 20px;
             }
-            .metrics {
-                gap: 24px;
-            }
-            .metric .number {
-                font-size: 24px;
+            .projects-grid {
+                grid-template-columns: 1fr;
             }
         }
     </style>
 </head>
 <body>
+
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="index.html" class="logo">JKH Consulting</a>
+            <div class="nav-links">
+                <a href="index.html">Home</a>
+                <a href="portfolio.html">Portfolio</a>
+                <a href="contact.html">Contact</a>
+            </div>
+        </div>
+    </nav>
 
     <!-- Hero Section -->
     <section class="hero">
@@ -239,8 +343,8 @@
         <p class="subheadline">I help organizations turn complexity into clarity.</p>
         
         <div class="cta-buttons">
-            <a href="#" class="btn-primary" id="resume-btn">View Resume</a>
-            <a href="#" class="btn-secondary" id="portfolio-btn">View Portfolio</a>
+            <a href="#" class="btn-primary">View Resume</a>
+            <a href="portfolio.html" class="btn-secondary">View Portfolio</a>
         </div>
         
         <div class="metrics">
@@ -263,114 +367,50 @@
         </div>
     </section>
 
-    <!-- Amplitude Analytics Demo Section -->
-    <section class="demo-section">
-        <h2>📊 Amplitude Analytics Demo</h2>
-        <p>Click a button below to see real-time event tracking in action.<br>Each click sends data to Amplitude.</p>
-        
-        <div class="button-group">
-            <button id="signup-btn" class="demo-btn demo-btn-primary">📝 Sign Up</button>
-            <button id="demo-btn" class="demo-btn demo-btn-secondary">🎥 Request Demo</button>
+    <!-- About Section -->
+    <div class="container">
+        <h2 class="section-title">About Me</h2>
+        <div class="about-content">
+            <p class="about-text">
+                I'm an <span class="about-highlight">Operations and Project Management professional</span> with 5+ years of experience across UN agencies, regional health organizations, and commercial environments. I've led $16M regional health projects across 26 Caribbean countries, built PMO infrastructure from scratch, and reduced customer churn by 54% through data-driven strategies. I hold a Lean Six Sigma Yellow Belt and am completing my Master of Public Health.
+            </p>
+            <p class="about-text">
+                What sets me apart is my ability to <span class="about-highlight">bridge strategy and execution</span>. I don't just manage projects – I build the systems that make them run. Whether it's automating reporting workflows that cut turnaround time by 80%, training 1,500+ stakeholders on new processes, or coordinating emergency health responses across 7 countries, I bring structure to chaos. I'm currently seeking opportunities where I can apply my blend of project management, data analytics, and process improvement to drive measurable impact.
+            </p>
         </div>
-        
-        <div class="status" id="status-message">
-            Click a button to track an event. Check the browser console (F12) for details.
+    </div>
+
+    <!-- Featured Work Section (Preview) -->
+    <div class="container" style="padding-top: 0;">
+        <h2 class="section-title">Featured Work</h2>
+        <div class="projects-grid">
+            <div class="card">
+                <div class="card-icon">📊</div>
+                <h3>$16M Regional Project</h3>
+                <p>Built PMO infrastructure across 26 Caribbean countries. Reduced reporting from 5 days to under 24 hours. Delivered 100% of milestones.</p>
+                <a href="portfolio.html" class="card-link">View project →</a>
+            </div>
+            <div class="card">
+                <div class="card-icon">🌍</div>
+                <h3>Migrant Health Campaign</h3>
+                <p>Co-led $75K campaign enabling COVID-19 testing for 10,000+ migrants across 5 outreach sites in partnership with 5 organizations.</p>
+                <a href="portfolio.html" class="card-link">View project →</a>
+            </div>
+            <div class="card">
+                <div class="card-icon">📉</div>
+                <h3>54% Churn Reduction</h3>
+                <p>Data-driven retention strategies reduced customer churn from 2,600 to 1,200 monthly cancellations while maintaining 95% satisfaction.</p>
+                <a href="portfolio.html" class="card-link">View project →</a>
+            </div>
         </div>
-    </section>
+        <div class="view-all">
+            <a href="portfolio.html" class="btn-outline">View Full Portfolio →</a>
+        </div>
+    </div>
 
     <footer>
         <p>Jeremy Harrilal | Operations & Analytics Professional</p>
-        <p>JKH Consulting</p>
+        <p style="margin-top: 8px; font-size: 12px;">JKH Consulting</p>
     </footer>
-
-    <!-- Tracking Script -->
-    <script>
-        // Wait for Amplitude to be ready
-        function waitForAmplitude(callback) {
-            if (typeof window.amplitude !== 'undefined' && typeof window.amplitude.track === 'function') {
-                callback();
-            } else {
-                setTimeout(function() { waitForAmplitude(callback); }, 100);
-            }
-        }
-        
-        waitForAmplitude(function() {
-            console.log('🎯 Amplitude SDK ready — adding custom event tracking');
-            
-            // Hero section buttons
-            const resumeBtn = document.getElementById('resume-btn');
-            const portfolioBtn = document.getElementById('portfolio-btn');
-            
-            // Demo section buttons
-            const signupBtn = document.getElementById('signup-btn');
-            const demoBtn = document.getElementById('demo-btn');
-            
-            const statusDiv = document.getElementById('status-message');
-            
-            function updateStatus(message, isSuccess = true) {
-                statusDiv.innerHTML = message;
-                statusDiv.style.background = isSuccess ? '#e6fffa' : '#fff5f5';
-                statusDiv.style.color = isSuccess ? '#276749' : '#c53030';
-            }
-            
-            // Track Hero CTA clicks
-            if (resumeBtn) {
-                resumeBtn.addEventListener('click', function(e) {
-                    e.preventDefault();
-                    window.amplitude.track('CTA Click', {
-                        button: 'View Resume',
-                        section: 'Hero',
-                        page: 'JKH Consulting',
-                        timestamp: new Date().toISOString()
-                    });
-                    console.log('✅ Tracked: View Resume clicked');
-                    updateStatus('✅ "View Resume" tracked! This is a demo — resume download coming soon.');
-                });
-            }
-            
-            if (portfolioBtn) {
-                portfolioBtn.addEventListener('click', function(e) {
-                    e.preventDefault();
-                    window.amplitude.track('CTA Click', {
-                        button: 'View Portfolio',
-                        section: 'Hero',
-                        page: 'JKH Consulting',
-                        timestamp: new Date().toISOString()
-                    });
-                    console.log('✅ Tracked: View Portfolio clicked');
-                    updateStatus('✅ "View Portfolio" tracked! Portfolio page coming soon.');
-                });
-            }
-            
-            // Track Demo CTA clicks
-            if (signupBtn) {
-                signupBtn.addEventListener('click', function() {
-                    window.amplitude.track('CTA Click', {
-                        button: 'Sign Up',
-                        section: 'Amplitude Demo',
-                        page: 'JKH Consulting',
-                        timestamp: new Date().toISOString()
-                    });
-                    console.log('✅ Tracked: Sign Up clicked');
-                    updateStatus('✅ "Sign Up" clicked! Event sent to Amplitude.');
-                });
-            }
-            
-            if (demoBtn) {
-                demoBtn.addEventListener('click', function() {
-                    window.amplitude.track('CTA Click', {
-                        button: 'Request Demo',
-                        section: 'Amplitude Demo',
-                        page: 'JKH Consulting',
-                        timestamp: new Date().toISOString()
-                    });
-                    console.log('✅ Tracked: Request Demo clicked');
-                    updateStatus('✅ "Request Demo" clicked! Event sent to Amplitude.');
-                });
-            }
-            
-            console.log('🎯 All tracking ready');
-        });
-    </script>
 </body>
 </html>
