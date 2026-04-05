@@ -7,6 +7,15 @@
     
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     
+    <!-- Google Analytics -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-L3589N2B7D"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+        gtag('config', 'G-L3589N2B7D');
+    </script>
+    
     <style>
         :root {
             --primary: #1a365d;
@@ -145,6 +154,17 @@
             text-decoration: underline;
         }
         
+        /* Calendly card specific styling */
+        .calendly-card {
+            padding: 24px;
+        }
+        
+        .calendly-inline-widget {
+            border-radius: 12px;
+            overflow: hidden;
+            margin-top: 16px;
+        }
+        
         .resume-section {
             text-align: center;
             margin-top: 48px;
@@ -219,6 +239,7 @@
         </div>
         
         <div class="contact-grid">
+            <!-- Email Card (Keep as is) -->
             <div class="contact-card">
                 <div class="contact-icon">📧</div>
                 <h3>Email</h3>
@@ -226,13 +247,17 @@
                 <a href="mailto:Jeremy.Harrilal@my.uwi.edu" class="contact-link">Send a message →</a>
             </div>
             
-            <div class="contact-card">
-                <div class="contact-icon">📞</div>
-                <h3>Phone</h3>
-                <p>+1 (868) 271-0640</p>
-                <p style="font-size: 12px; margin-top: 8px;">Available for calls 9am-5pm EST</p>
+            <!-- Calendly Card (Replaces Phone Card) -->
+            <div class="contact-card calendly-card">
+                <div class="contact-icon">📅</div>
+                <h3>Schedule a Call</h3>
+                <p>Book a 30-minute discovery call directly on my calendar.</p>
+                <!-- Calendly inline widget -->
+                <div class="calendly-inline-widget" data-url="https://calendly.com/keron62/30min" style="min-width:280px;height:500px;"></div>
+                <script type="text/javascript" src="https://assets.calendly.com/assets/external/widget.js" async></script>
             </div>
             
+            <!-- LinkedIn Card (Keep as is) -->
             <div class="contact-card">
                 <div class="contact-icon">🔗</div>
                 <h3>LinkedIn</h3>
@@ -241,11 +266,11 @@
             </div>
         </div>
         
+        <!-- Resume Download Section (Keep at bottom) -->
         <div class="resume-section">
             <h2>📄 Download My Resume</h2>
             <p>PDF version available for download. Includes complete work history, certifications, and publications.</p>
-            <!-- CHANGE THE FILENAME to match your PDF -->
-            <a href="Jeremy Harrilal Resume 2026.pdf" class="btn-resume" download>Download Resume (PDF)</a>
+            <a href="Jeremy_Harrilal_Resume.pdf" class="btn-resume" download>Download Resume (PDF)</a>
         </div>
     </div>
 
