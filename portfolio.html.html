@@ -139,11 +139,20 @@
             box-shadow: 0 4px 6px rgba(0,0,0,0.1);
             transition: all 0.3s ease;
             border: 1px solid #e2e8f0;
+            display: flex;
+            flex-direction: column;
+            text-decoration: none;
+            color: inherit;
         }
         
         .card:hover {
             transform: translateY(-5px);
             box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1);
+        }
+        
+        /* Clickable card cursor */
+        .card-clickable {
+            cursor: pointer;
         }
         
         .card-icon {
@@ -153,7 +162,7 @@
         
         .card h3 {
             font-size: 22px;
-            margin-bottom: 12px;
+            margin-bottom: 8px;
             color: var(--primary);
         }
         
@@ -169,6 +178,21 @@
         .card p {
             color: var(--gray);
             margin-bottom: 20px;
+            flex-grow: 1;
+        }
+        
+        .card-link {
+            color: var(--accent);
+            text-decoration: none;
+            font-weight: 600;
+            margin-top: auto;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .card-link:hover {
+            gap: 12px;
         }
         
         /* Demo Section */
@@ -240,6 +264,9 @@
         }
         
         @media (max-width: 768px) {
+            .page-header h1 {
+                font-size: 36px;
+            }
             .projects-grid {
                 grid-template-columns: 1fr;
             }
@@ -268,22 +295,25 @@
             <p>A selection of projects demonstrating my impact across operations, analytics, and public health.</p>
         </div>
         
-        <h2 class="section-title">Featured Projects</h2>
         <div class="projects-grid">
-            <div class="card">
+            <!-- Card 1: $16M Pandemic Fund Project (Clickable - External Link) -->
+            <a href="https://www.thepandemicfund.org/projects/CARIBBEAN-reducing-public-health-impact-pandemics-through-strengthened-integrated-early-warning" target="_blank" rel="noopener noreferrer" class="card card-clickable">
                 <div class="card-icon">📊</div>
                 <div class="subtitle">CARPHA | 2024-2025</div>
                 <h3>$16M Regional Pandemic Fund Project</h3>
                 <p>Built PMO infrastructure from scratch across 26 Caribbean countries. Architected dashboards, automated reporting workflows, reduced turnaround from 5 days to under 24 hours. Led cross-functional teams of 8-12. Delivered 100% of milestones.</p>
-            </div>
+                <span class="card-link">View project on Pandemic Fund website →</span>
+            </a>
             
+            <!-- Card 2: Migrant Health Campaign (Non-Clickable - Keep as-is for now) -->
             <div class="card">
                 <div class="card-icon">🌍</div>
-                <div class="subtitle">PAHO/WHO | 2021-2023</div>
+                <div class="subtitle">PAHO/WHO | $75K</div>
                 <h3>Migrant Health Campaign</h3>
-                <p>Co-led technical design and stakeholder coordination for $75K campaign. Procured test kits, conceptualized outreach sites, coordinated 5 partner organizations. Enabled COVID-19 testing for 10,000+ migrants.</p>
+                <p>Co-led technical design and stakeholder coordination. Procured test kits, conceptualized outreach sites, coordinated 5 partner organizations. Enabled COVID-19 testing for 10,000+ migrants.</p>
             </div>
             
+            <!-- Card 3: 54% Churn Reduction (Non-Clickable) -->
             <div class="card">
                 <div class="card-icon">📉</div>
                 <div class="subtitle">Digicel | 2019</div>
@@ -291,25 +321,30 @@
                 <p>Data-driven retention strategies reduced monthly postpaid cancellations from 2,600 to 1,200 customers. Achieved 85% prevention rate on escalated complaints and 95% satisfaction on upsold customers.</p>
             </div>
             
-            <div class="card">
+            <!-- Card 4: ICD-11 Implementation (Clickable - DOI Link) -->
+            <a href="https://doi.org/10.26633/RPSP.2025.109" target="_blank" rel="noopener noreferrer" class="card card-clickable">
                 <div class="card-icon">🏥</div>
-                <div class="subtitle">PAHO/WHO | 2022</div>
+                <div class="subtitle">PAHO/WHO | Published Research</div>
                 <h3>ICD-11 Implementation</h3>
                 <p>Led capacity-building initiatives training 100+ healthcare workers on ICD-11 transition. Achieved 95% post-training competency scores. Co-authored published research in Pan American Journal of Public Health.</p>
-            </div>
+                <span class="card-link">Read the publication →</span>
+            </a>
             
+            <!-- Card 5: Healthcare Workers COVID-19 Survey (New - Clickable) -->
+            <a href="https://iris.paho.org/handle/10665.2/57379" target="_blank" rel="noopener noreferrer" class="card card-clickable">
+                <div class="card-icon">👩‍⚕️</div>
+                <div class="subtitle">PAHO/WHO | 2023 | Published Research</div>
+                <h3>Healthcare Workers COVID-19 Survey</h3>
+                <p>Co-authored PAHO/WHO survey of 371 healthcare workers in Trinidad and Tobago. Analyzed attitudes toward COVID-19 vaccination, identifying key drivers of hesitancy. Findings published as PAHO technical document.</p>
+                <span class="card-link">Read the publication →</span>
+            </a>
+            
+            <!-- Card 6: LPG Distribution Operations (Non-Clickable) -->
             <div class="card">
                 <div class="card-icon">🚚</div>
                 <div class="subtitle">Ramco Industries | 2019-2020</div>
                 <h3>LPG Distribution Operations</h3>
                 <p>Managed end-to-end operations across 20+ delivery routes, 500+ depots, and 50+ staff. Achieved 100% sell-out rates across 11 daily routes.</p>
-            </div>
-            
-            <div class="card">
-                <div class="card-icon">🌀</div>
-                <div class="subtitle">CARPHA | 2024</div>
-                <h3>Hurricane Beryl Response</h3>
-                <p>Coordinated emergency health response across 7 impacted Member States. Deployed technical staff and procured essential supplies as part of CDEMA-led Regional Response Mechanism.</p>
             </div>
         </div>
         
