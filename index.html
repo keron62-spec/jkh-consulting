@@ -56,7 +56,7 @@
             background-size: cover;
         }
         
-        /* Add a semi-transparent overlay to keep text readable */
+        /* Semi-transparent overlay for readability */
         body::before {
             content: '';
             position: fixed;
@@ -66,12 +66,6 @@
             height: 100%;
             background: rgba(255, 255, 255, 0.85);
             z-index: -1;
-        }
-        
-        /* Ensure content is above the overlay */
-        .navbar, .hero, .container, footer {
-            position: relative;
-            z-index: 1;
         }
         
         /* Navigation */
@@ -118,30 +112,29 @@
             color: var(--accent);
         }
         
-        /* Hero Section */
+        /* Hero Section - Purple Gradient (Stays) */
         .hero {
             text-align: center;
             padding: 80px 20px;
-            color: var(--dark);
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
         }
         
         .hero h1 {
             font-size: 56px;
             margin-bottom: 16px;
             letter-spacing: -0.02em;
-            color: var(--primary);
         }
         
         .hero .tagline {
             font-size: 24px;
-            font-weight: 500;
+            opacity: 0.95;
             margin-bottom: 16px;
-            color: var(--primary-light);
         }
         
         .hero .subheadline {
             font-size: 18px;
-            color: var(--gray);
+            opacity: 0.9;
             max-width: 600px;
             margin: 0 auto 32px;
         }
@@ -162,25 +155,24 @@
         }
         
         .btn-primary {
-            background: var(--accent);
-            color: white;
+            background: white;
+            color: #667eea;
         }
         
         .btn-primary:hover {
-            background: var(--accent-hover);
             transform: translateY(-2px);
             box-shadow: 0 10px 20px rgba(0,0,0,0.2);
         }
         
         .btn-secondary {
             background: transparent;
-            color: var(--accent);
-            border: 2px solid var(--accent);
+            color: white;
+            border: 2px solid white;
         }
         
         .btn-secondary:hover {
-            background: var(--accent);
-            color: white;
+            background: white;
+            color: #667eea;
         }
         
         .metrics {
@@ -194,12 +186,11 @@
             font-size: 36px;
             font-weight: 700;
             display: block;
-            color: var(--primary);
         }
         
         .metric .label {
             font-size: 14px;
-            color: var(--gray);
+            opacity: 0.85;
         }
         
         /* Container */
@@ -256,18 +247,22 @@
             margin-top: 24px;
         }
         
+        /* Frosted Glass Cards */
         .card {
-            background: var(--white);
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(8px);
             border-radius: 16px;
             padding: 28px;
             box-shadow: 0 4px 6px rgba(0,0,0,0.1);
             transition: all 0.3s ease;
-            border: 1px solid #e2e8f0;
+            border: 1px solid rgba(255, 255, 255, 0.3);
         }
         
         .card:hover {
             transform: translateY(-5px);
-            box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1);
+            box-shadow: 0 20px 25px -5px rgba(0,0,0,0.2);
+            background: rgba(255, 255, 255, 0.95);
+            border-color: rgba(255, 255, 255, 0.5);
         }
         
         .card-icon {
@@ -315,6 +310,8 @@
             text-decoration: none;
             font-weight: 600;
             transition: all 0.3s ease;
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(4px);
         }
         
         .btn-outline:hover {
@@ -358,7 +355,7 @@
         </div>
     </nav>
 
-    <!-- Hero Section -->
+    <!-- Hero Section (Purple Gradient - Stays) -->
     <section class="hero">
         <h1>Jeremy Harrilal</h1>
         <p class="tagline">Operations & Analytics Professional</p>
