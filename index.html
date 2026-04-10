@@ -16,9 +16,6 @@
         gtag('js', new Date());
         gtag('config', 'G-L3589N2B7D');
     </script>
-
-    <!-- Contentsquare (Hotjar) Tracking -->
-    <script src="https://t.contentsquare.net/uxa/5f94e8837c5a5.js"></script>
     
     <!-- Amplitude SDK -->
     <script src="https://cdn.amplitude.com/script/61a7757800aeb4ea0e6f5471d9af5704.js"></script>
@@ -32,6 +29,9 @@
             }
         });
     </script>
+    
+    <!-- Contentsquare (Hotjar) Tracking -->
+    <script src="https://t.contentsquare.net/uxa/5f94e8837c5a5.js"></script>
     
     <style>
         :root {
@@ -230,6 +230,20 @@
             text-align: center;
         }
         
+        .about-image {
+            text-align: center;
+            margin-bottom: 24px;
+        }
+        
+        .profile-photo {
+            width: 150px;
+            height: 150px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 3px solid var(--accent);
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        
         .about-text {
             font-size: 18px;
             color: var(--gray);
@@ -271,8 +285,10 @@
         }
         
         .card-icon {
-            font-size: 40px;
-            margin-bottom: 16px;
+            width: 60px;
+            height: 60px;
+            object-fit: contain;
+            margin-bottom: 20px;
         }
         
         .card h3 {
@@ -343,6 +359,10 @@
             .projects-grid {
                 grid-template-columns: 1fr;
             }
+            .profile-photo {
+                width: 120px;
+                height: 120px;
+            }
         }
     </style>
 </head>
@@ -360,7 +380,7 @@
         </div>
     </nav>
 
-    <!-- Hero Section (Purple Gradient + Dashboard Image) -->
+    <!-- Hero Section -->
     <section class="hero">
         <h1>Jeremy Harrilal</h1>
         <p class="tagline">Operations & Analytics Professional</p>
@@ -395,11 +415,14 @@
     <div class="container">
         <h2 class="section-title">About Me</h2>
         <div class="about-content">
+            <div class="about-image">
+                <img src="Assets/Images/Professional Photo.jpg" alt="Jeremy Harrilal - Operations and Analytics Professional" class="profile-photo">
+            </div>
             <p class="about-text">
-                I'm an <span class="about-highlight">Operations and Project Management professional</span> with 5+ years of experience across UN agencies, regional health organizations, and commercial environments. I've led $16M regional health projects across 26 Caribbean countries, built PMO infrastructure from scratch, and reduced customer churn by 54% through data-driven strategies. I hold a Lean Six Sigma Yellow Belt and am completing my Master of Public Health.
+                I'm an <span class="about-highlight">Operations and Project Management professional</span> with 5+ years of experience across UN agencies, regional health organizations, and commercial environments. I've led regional and national health projects, built PMO infrastructure from scratch, and reduced customer churn by 54% through data-driven strategies. I hold a Lean Six Sigma Yellow Belt, and I am currently completing my Master's of Public Health.
             </p>
             <p class="about-text">
-                What sets me apart is my ability to <span class="about-highlight">bridge strategy and execution</span>. I don't just manage projects – I build the systems that make them run. Whether it's automating reporting workflows that cut turnaround time by 80%, training 1,500+ stakeholders on new processes, or coordinating emergency health responses across 7 countries, I bring structure to chaos. I'm currently seeking opportunities where I can apply my blend of project management, data analytics, and process improvement to drive measurable impact.
+                What sets me apart is my ability to <span class="about-highlight">bridge strategy and execution</span>. I don't just manage projects – I build the systems that make them run. Whether it's automating reporting workflows that cut turnaround time by 80%, training 1,500+ stakeholders on new processes, or coordinating emergency health responses across 7 countries, I bring structure to chaos.
             </p>
         </div>
     </div>
@@ -409,19 +432,19 @@
         <h2 class="section-title">Featured Work</h2>
         <div class="projects-grid">
             <div class="card">
-                <div class="card-icon">📊</div>
+                <img src="Assets/Images/16 M project.jpg" alt="$16M project icon" class="card-icon">
                 <h3>$16M Regional Project</h3>
                 <p>Built PMO infrastructure across 26 Caribbean countries. Reduced reporting from 5 days to under 24 hours. Delivered 100% of milestones.</p>
                 <a href="portfolio.html" class="card-link">View project →</a>
             </div>
             <div class="card">
-                <div class="card-icon">🌍</div>
+                <img src="Assets/Images/migrant health icon.jpg" alt="Migrant health campaign icon" class="card-icon">
                 <h3>Migrant Health Campaign</h3>
                 <p>Co-led $75K campaign enabling COVID-19 testing for 10,000+ migrants across 5 outreach sites in partnership with 5 organizations.</p>
                 <a href="portfolio.html" class="card-link">View project →</a>
             </div>
             <div class="card">
-                <div class="card-icon">📉</div>
+                <img src="Assets/Images/Arrow image (1).jpg" alt="Churn reduction icon" class="card-icon">
                 <h3>54% Churn Reduction</h3>
                 <p>Data-driven retention strategies reduced customer churn from 2,600 to 1,200 monthly cancellations while maintaining 95% satisfaction.</p>
                 <a href="portfolio.html" class="card-link">View project →</a>
