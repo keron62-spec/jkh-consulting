@@ -327,6 +327,36 @@
             box-shadow: 0 4px 6px rgba(0,0,0,0.1);
         }
         
+        .audio-player-container {
+            margin: 20px auto;
+            max-width: 400px;
+        }
+        
+        .audio-player-wrapper {
+            background: linear-gradient(135deg, #667eea15 0%, #764ba215 100%);
+            border-radius: 60px;
+            padding: 8px 20px;
+            display: inline-flex;
+            align-items: center;
+            gap: 12px;
+            backdrop-filter: blur(4px);
+        }
+        
+        .audio-icon {
+            font-size: 24px;
+        }
+        
+        .audio-player {
+            height: 40px;
+            min-width: 250px;
+        }
+        
+        .audio-label {
+            font-size: 12px;
+            color: #667eea;
+            font-weight: 500;
+        }
+        
         .about-text {
             font-size: 18px;
             color: var(--gray);
@@ -446,6 +476,12 @@
                 width: 120px;
                 height: 120px;
             }
+            .audio-player {
+                min-width: 180px;
+            }
+            .audio-player-wrapper {
+                padding: 8px 12px;
+            }
         }
     </style>
 </head>
@@ -501,6 +537,19 @@
             <div class="about-image">
                 <img src="Assets/Images/Professional Photo.jpg" alt="Jeremy Harrilal - Operations and Analytics Consultant" class="profile-photo">
             </div>
+            
+            <!-- ElevenLabs Audio Player -->
+            <div class="audio-player-container">
+                <div class="audio-player-wrapper">
+                    <span class="audio-icon">🎙️</span>
+                    <audio id="aboutMeAudio" class="audio-player" controls>
+                        <source src="Assets/Audio/About Me Narration.mp3" type="audio/mpeg">
+                        Your browser does not support the audio element.
+                    </audio>
+                    <span class="audio-label">Listen to intro</span>
+                </div>
+            </div>
+            
             <p class="about-text">
                 I'm an <span class="about-highlight">Operations and Project Management professional</span> with 5+ years of experience across UN agencies, regional health organizations, and commercial environments. I've led regional and national health projects, built PMO infrastructure from scratch, and reduced customer churn by 54% through data-driven strategies. I hold a Lean Six Sigma Yellow Belt, and I am currently completing my Master's of Public Health.
             </p>
@@ -542,5 +591,37 @@
         <p>Jeremy Harrilal | Operations & Analytics Consultant</p>
         <p style="margin-top: 8px; font-size: 12px;">JKH Consulting</p>
     </footer>
+
+    <!-- Amplitude Audio Tracking -->
+    <script>
+        function waitForAmplitude(callback) {
+            if (typeof window.amplitude !== 'undefined' && typeof window.amplitude.track === 'function') {
+                callback();
+            } else {
+                setTimeout(function() { waitForAmplitude(callback); }, 100);
+            }
+        }
+        
+        waitForAmplitude(function() {
+            const audioPlayer = document.getElementById('aboutMeAudio');
+            if (audioPlayer) {
+                audioPlayer.addEventListener('play', function() {
+                    amplitude.track('Audio Played', {
+                        section: 'About Me',
+                        audio_file: 'About Me Narration.mp3',
+                        page: 'Homepage'
+                    });
+                });
+                
+                audioPlayer.addEventListener('ended', function() {
+                    amplitude.track('Audio Completed', {
+                        section: 'About Me',
+                        audio_file: 'About Me Narration.mp3',
+                        page: 'Homepage'
+                    });
+                });
+            }
+        });
+    </script>
 </body>
 </html>
