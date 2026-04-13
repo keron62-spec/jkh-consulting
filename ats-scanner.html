@@ -309,7 +309,8 @@
         // Get your key from: https://aistudio.google.com/app/apikey
         // Replace "YOUR_GEMINI_API_KEY_HERE" with your actual key
         const GEMINI_API_KEY = "AIzaSyAcRjzjFzoK5qrZQHVHesOr44Zy0643u0U";
-        const GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent";
+        // Using Gemini 3.1 Flash Lite Preview - Free tier eligible
+        const GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite-preview:generateContent";
         // ============================================================
 
         function ATSScanner() {
@@ -437,6 +438,9 @@ ${resumeText}`;
                     
                     if (data.error) {
                         console.error('Gemini API Error:', data.error);
+                        if (data.error.message.includes('not found') || data.error.message.includes('model')) {
+                            throw new Error('Gemini 3.1 model not available. Try using "gemini-2.0-flash-lite-preview" instead.');
+                        }
                         throw new Error(data.error.message || 'API Error');
                     }
 
