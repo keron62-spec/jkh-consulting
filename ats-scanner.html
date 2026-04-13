@@ -51,11 +51,6 @@
             margin-bottom: 30px;
         }
 
-        .upload-section {
-            text-align: center;
-            padding: 40px 20px;
-        }
-
         .tabs {
             display: flex;
             gap: 10px;
@@ -293,6 +288,13 @@
             color: #047857;
             margin: 5px 0;
         }
+
+        .privacy-note {
+            font-size: 12px;
+            color: #6b7280;
+            text-align: center;
+            margin-top: 20px;
+        }
     </style>
 </head>
 <body>
@@ -300,6 +302,15 @@
 
     <script type="text/babel">
         const { useState } = React;
+
+        // ============================================================
+        // STEP 1: PASTE YOUR GOOGLE GEMINI API KEY HERE
+        // ============================================================
+        // Get your key from: https://aistudio.google.com/app/apikey
+        // Replace "YOUR_GEMINI_API_KEY_HERE" with your actual key
+        const GEMINI_API_KEY = "AIzaSyAcRjzjFzoK5qrZQHVHesOr44Zy0643u0U";
+        const GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent";
+        // ============================================================
 
         function ATSScanner() {
             const [activeTab, setActiveTab] = useState('paste');
@@ -333,18 +344,7 @@
                 setLoading(true);
                 setResult(null);
 
-                try {
-                    const response = await fetch('https://api.anthropic.com/v1/messages', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({
-                            model: 'claude-sonnet-4-20250514',
-                            max_tokens: 4000,
-                            messages: [{
-                                role: 'user',
-                                content: `You are an expert ATS (Applicant Tracking System) resume scanner. Analyze this resume and provide a detailed score based on the following criteria:
+                const prompt = `You are an expert ATS (Applicant Tracking System) resume scanner. Analyze this resume and provide a detailed score based on the following criteria:
 
 SCORING BREAKDOWN (Total 100 points):
 1. Header Formatting (10 points) - Clean contact info, proper email/phone/LinkedIn format, no stray characters
@@ -356,10 +356,14 @@ SCORING BREAKDOWN (Total 100 points):
 7. Length & Brevity (5 points) - Concise, no fluff, appropriate length
 8. Publications/Projects (10 points) - Credibility additions
 
-RESUME TEXT:
-${resumeText}
+CRITICAL RULES:
+- ALWAYS include at least 3 top issues (prioritized: High, Medium, Low)
+- Be SPECIFIC in fixes - not "improve formatting" but "Change dates from 03/2024 to Mar 2024"
+- Missing quantified results is ALWAYS a high-priority issue
+- Passive voice is ALWAYS at least medium priority
 
-Respond ONLY with a valid JSON object in this exact format (no markdown, no backticks):
+Respond ONLY with a valid JSON object in this exact format (no markdown, no backticks, no explanation):
+
 {
   "total_score": 85,
   "label": "Good",
@@ -376,42 +380,68 @@ Respond ONLY with a valid JSON object in this exact format (no markdown, no back
   "top_issues": [
     {
       "priority": "High",
-      "issue": "Missing quantified metrics in 3 bullets",
+      "issue": "Missing quantified metrics in 4 out of 12 bullets",
       "location": "Experience section",
-      "fix": "Add specific numbers: 'Led team of X', 'Reduced costs by Y%'"
+      "fix": "Add specific numbers: 'Led team of X people', 'Reduced costs by Y%', 'Managed budget of $Z'"
     },
     {
       "priority": "Medium",
       "issue": "LinkedIn URL incomplete",
       "location": "Header",
-      "fix": "Use full URL: linkedin.com/in/yourname"
+      "fix": "Change 'in/jeremy-harrilal' to 'linkedin.com/in/jeremy-harrilal-713a29b1'"
     },
     {
       "priority": "Low",
       "issue": "Inconsistent date formatting",
-      "location": "Throughout",
-      "fix": "Standardize to MMM YYYY - MMM YYYY"
+      "location": "Experience section",
+      "fix": "Standardize all dates to 'MMM YYYY – MMM YYYY' format"
     }
   ],
   "strengths": [
-    "Strong use of action verbs throughout",
-    "Clear skills categorization",
-    "Published research adds credibility"
+    "Strong use of action verbs throughout experience section",
+    "Clear skills categorization with relevant technical tools",
+    "Published research in peer-reviewed journals adds credibility"
   ],
   "missing_keywords": [
     "Project Management",
     "Stakeholder Engagement",
-    "Data Analysis"
+    "Risk Management",
+    "Data Analysis",
+    "Process Improvement"
   ]
-}`
-                            }]
+}
+
+RESUME TEXT:
+${resumeText}`;
+
+                try {
+                    const response = await fetch(`${GEMINI_API_URL}?key=${GEMINI_API_KEY}`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            contents: [{
+                                parts: [{
+                                    text: prompt
+                                }]
+                            }],
+                            generationConfig: {
+                                temperature: 0.3,
+                                maxOutputTokens: 4000
+                            }
                         })
                     });
 
                     const data = await response.json();
                     
-                    if (data.content && data.content[0] && data.content[0].text) {
-                        let jsonText = data.content[0].text.trim();
+                    if (data.error) {
+                        console.error('Gemini API Error:', data.error);
+                        throw new Error(data.error.message || 'API Error');
+                    }
+
+                    if (data.candidates && data.candidates[0] && data.candidates[0].content) {
+                        let jsonText = data.candidates[0].content.parts[0].text.trim();
                         // Remove markdown code fences if present
                         jsonText = jsonText.replace(/```json\n?/g, '').replace(/```\n?/g, '');
                         const parsedResult = JSON.parse(jsonText);
@@ -421,7 +451,7 @@ Respond ONLY with a valid JSON object in this exact format (no markdown, no back
                     }
                 } catch (error) {
                     console.error('Analysis error:', error);
-                    alert('Error analyzing resume. Please try again.');
+                    alert('Error analyzing resume. Please try again. Error: ' + error.message);
                 } finally {
                     setLoading(false);
                 }
@@ -433,10 +463,10 @@ Respond ONLY with a valid JSON object in this exact format (no markdown, no back
                     return;
                 }
 
-                // TODO: Integrate with HubSpot or email service
                 // For now, just simulate success
+                // In production, connect to n8n webhook
                 setEmailSent(true);
-                alert('Full report will be sent to: ' + email);
+                alert('Full report will be sent to: ' + email + '\n\n(Email integration coming soon - your data has been captured)');
             };
 
             const getScoreColor = (score) => {
@@ -496,7 +526,7 @@ Respond ONLY with a valid JSON object in this exact format (no markdown, no back
                                         <label className="file-upload">
                                             <input 
                                                 type="file" 
-                                                accept=".txt,.docx,.pdf"
+                                                accept=".txt"
                                                 onChange={handleFileUpload}
                                             />
                                             <div className="file-upload-icon">📁</div>
@@ -506,7 +536,7 @@ Respond ONLY with a valid JSON object in this exact format (no markdown, no back
                                                 ) : (
                                                     <>
                                                         <strong>Click to upload</strong> or drag and drop<br/>
-                                                        <small>Supports .txt files (DOCX/PDF coming soon)</small>
+                                                        <small>Supports .txt files</small>
                                                     </>
                                                 )}
                                             </div>
@@ -590,7 +620,7 @@ Respond ONLY with a valid JSON object in this exact format (no markdown, no back
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {result.top_issues.map((issue, idx) => (
+                                        {result.top_issues && result.top_issues.map((issue, idx) => (
                                             <tr key={idx}>
                                                 <td className={`priority-${issue.priority.toLowerCase()}`}>
                                                     {issue.priority}
@@ -656,7 +686,11 @@ Respond ONLY with a valid JSON object in this exact format (no markdown, no back
                     </div>
 
                     <div className="back-link">
-                        <a href="index.html">← Back to JKH Consulting</a>
+                        <a href="https://jkh-consulting.keron62.workers.dev/index.html">← Back to JKH Consulting</a>
+                    </div>
+                    
+                    <div className="privacy-note">
+                        🔒 Your resume is sent to Google Gemini API for analysis. No data is stored permanently.
                     </div>
                 </div>
             );
