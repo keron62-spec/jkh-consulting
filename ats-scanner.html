@@ -5,6 +5,32 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Free ATS Resume Scanner | JKH Consulting</title>
     <meta name="description" content="Get your resume scored by an AI-powered ATS scanner. Instant feedback on formatting, keywords, and what recruiters actually see.">
+    
+    <!-- Google Analytics -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-L3589N2B7D"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+        gtag('config', 'G-L3589N2B7D');
+    </script>
+
+    <!-- Amplitude SDK -->
+    <script src="https://cdn.amplitude.com/script/61a7757800aeb4ea0e6f5471d9af5704.js"></script>
+    <script>
+        window.amplitude.init('61a7757800aeb4ea0e6f5471d9af5704', {
+            fetchRemoteConfig: true,
+            autocapture: {
+                pageViews: true,
+                sessions: true,
+                elementInteractions: true
+            }
+        });
+    </script>
+
+    <!-- Contentsquare (Hotjar) Tracking -->
+    <script src="https://t.contentsquare.net/uxa/5f94e8837c5a5.js"></script>
+    
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -23,7 +49,7 @@
         }
 
         .container {
-            max-width: 900px;
+            max-width: 1000px;
             margin: 0 auto;
         }
 
@@ -191,9 +217,29 @@
         .score-moderate { color: #f59e0b; }
         .score-poor { color: #ef4444; }
 
+        .results-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-top: 30px;
+            text-align: left;
+        }
+
+        .results-section {
+            background: #f9fafb;
+            border-radius: 12px;
+            padding: 20px;
+        }
+
+        .results-section h3 {
+            color: #1a365d;
+            margin-bottom: 15px;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 8px;
+        }
+
         .issues-table {
             width: 100%;
-            margin-top: 30px;
             border-collapse: collapse;
         }
 
@@ -202,6 +248,7 @@
             padding: 12px;
             text-align: left;
             border-bottom: 1px solid #e5e7eb;
+            vertical-align: top;
         }
 
         .issues-table th {
@@ -223,10 +270,50 @@
             color: #6b7280; 
         }
 
-        .email-capture {
-            background: #f9fafb;
-            padding: 30px;
+        .strengths-list, .missing-keywords-list {
+            list-style: none;
+            padding: 0;
+        }
+
+        .strengths-list li, .missing-keywords-list li {
+            padding: 8px 0;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        .strengths-list li:before {
+            content: "✅ ";
+            color: #10b981;
+        }
+
+        .missing-keywords-list li:before {
+            content: "🔍 ";
+            color: #f59e0b;
+        }
+
+        .buzzword-item {
+            background: #fef2f2;
+            padding: 10px;
+            margin: 10px 0;
             border-radius: 8px;
+            border-left: 4px solid #ef4444;
+        }
+
+        .role-match-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        .match-percentage {
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .email-capture {
+            background: linear-gradient(135deg, #667eea15 0%, #764ba215 100%);
+            padding: 30px;
+            border-radius: 12px;
             margin-top: 30px;
             text-align: center;
         }
@@ -267,33 +354,23 @@
             text-decoration: underline;
         }
 
-        .strengths {
-            background: #ecfdf5;
-            border-left: 4px solid #10b981;
-            padding: 20px;
-            margin: 20px 0;
-            border-radius: 4px;
-        }
-
-        .strengths h3 {
-            color: #065f46;
-            margin-bottom: 10px;
-        }
-
-        .strengths ul {
-            margin-left: 20px;
-        }
-
-        .strengths li {
-            color: #047857;
-            margin: 5px 0;
-        }
-
         .privacy-note {
             font-size: 12px;
             color: #6b7280;
             text-align: center;
             margin-top: 20px;
+        }
+
+        @media (max-width: 768px) {
+            .results-grid {
+                grid-template-columns: 1fr;
+            }
+            .email-input {
+                flex-direction: column;
+            }
+            .email-input button {
+                width: 100%;
+            }
         }
     </style>
 </head>
@@ -303,12 +380,8 @@
     <script type="text/babel">
         const { useState } = React;
 
-        // ============================================================
-        // CLOUDFLARE WORKER PROXY ENDPOINT
-        // Your API key is safely stored in the Worker, not here
-        // ============================================================
+        // Cloudflare Worker Proxy Endpoint
         const WORKER_URL = "https://ats-proxy.keron62.workers.dev";
-        // ============================================================
 
         function ATSScanner() {
             const [activeTab, setActiveTab] = useState('paste');
@@ -342,6 +415,14 @@
                 setLoading(true);
                 setResult(null);
 
+                // Track analysis start in Amplitude
+                if (window.amplitude) {
+                    amplitude.track('Resume Analysis Started', {
+                        source: activeTab,
+                        timestamp: new Date().toISOString()
+                    });
+                }
+
                 try {
                     const response = await fetch(WORKER_URL, {
                         method: 'POST',
@@ -360,16 +441,31 @@
 
                     if (data.candidates && data.candidates[0] && data.candidates[0].content) {
                         let jsonText = data.candidates[0].content.parts[0].text.trim();
-                        // Remove markdown code fences if present
                         jsonText = jsonText.replace(/```json\n?/g, '').replace(/```\n?/g, '');
                         const parsedResult = JSON.parse(jsonText);
                         setResult(parsedResult);
+                        
+                        // Track successful analysis in Amplitude
+                        if (window.amplitude) {
+                            amplitude.track('Resume Analysis Completed', {
+                                total_score: parsedResult.total_score,
+                                label: parsedResult.label,
+                                issue_count: parsedResult.all_issues ? parsedResult.all_issues.length : 0
+                            });
+                        }
                     } else {
                         throw new Error('Invalid response format from worker');
                     }
                 } catch (error) {
                     console.error('Analysis error:', error);
                     alert('Error analyzing resume. Please try again. Error: ' + error.message);
+                    
+                    // Track error in Amplitude
+                    if (window.amplitude) {
+                        amplitude.track('Resume Analysis Error', {
+                            error: error.message
+                        });
+                    }
                 } finally {
                     setLoading(false);
                 }
@@ -381,8 +477,22 @@
                     return;
                 }
 
-                // For now, just simulate success
-                // In production, connect to n8n webhook
+                // Track email capture in Amplitude
+                if (window.amplitude) {
+                    amplitude.track('Email Captured', {
+                        email_domain: email.split('@')[1],
+                        score: result?.total_score
+                    });
+                }
+
+                // Track in Google Analytics
+                if (typeof gtag !== 'undefined') {
+                    gtag('event', 'generate_lead', {
+                        'event_category': 'ATS_Scanner',
+                        'event_label': email
+                    });
+                }
+
                 setEmailSent(true);
                 alert('Full report will be sent to: ' + email + '\n\n(Email integration coming soon - your data has been captured)');
             };
@@ -404,8 +514,8 @@
             return (
                 <div className="container">
                     <div className="header">
-                        <h1>🎯 ATS Resume Scanner</h1>
-                        <p>Get instant feedback on how recruiters' systems see your resume</p>
+                        <h1>🎯 ATS Resume Scanner V2</h1>
+                        <p>AI-powered analysis based on recruiter psychology + ATS parsing</p>
                     </div>
 
                     <div className="card">
@@ -475,7 +585,7 @@
                             <div className="loading">
                                 <div className="spinner"></div>
                                 <p>Analyzing your resume...</p>
-                                <small>This may take 10-15 seconds</small>
+                                <small>This may take 15-20 seconds</small>
                             </div>
                         )}
 
@@ -514,60 +624,165 @@
                                     {getScoreGrade(result.total_score)}
                                 </div>
 
-                                {result.strengths && result.strengths.length > 0 && (
-                                    <div className="strengths">
+                                {result.recruiter_scan_verdict && (
+                                    <div style={{marginTop: '10px', fontSize: '14px', color: '#6b7280'}}>
+                                        {result.recruiter_scan_verdict}
+                                    </div>
+                                )}
+
+                                <div className="results-grid">
+                                    {/* Left Column - Strengths & Market Positioning */}
+                                    <div className="results-section">
                                         <h3>✅ What's Working Well</h3>
-                                        <ul>
-                                            {result.strengths.map((strength, idx) => (
-                                                <li key={idx}>{strength}</li>
-                                            ))}
-                                        </ul>
+                                        {result.strengths && result.strengths.length > 0 ? (
+                                            <ul className="strengths-list">
+                                                {result.strengths.map((strength, idx) => (
+                                                    <li key={idx}>{strength}</li>
+                                                ))}
+                                            </ul>
+                                        ) : (
+                                            <p>No strengths identified</p>
+                                        )}
+
+                                        {result.market_positioning && (
+                                            <>
+                                                <h3 style={{marginTop: '20px'}}>📊 Market Positioning</h3>
+                                                <p><strong>Level:</strong> {result.market_positioning.level}</p>
+                                                <p><strong>Assessment:</strong> {result.market_positioning.assessment}</p>
+                                                {result.market_positioning.recommended_roles && (
+                                                    <>
+                                                        <p><strong>Recommended Roles:</strong></p>
+                                                        <ul>
+                                                            {result.market_positioning.recommended_roles.map((role, idx) => (
+                                                                <li key={idx}>{role}</li>
+                                                            ))}
+                                                        </ul>
+                                                    </>
+                                                )}
+                                            </>
+                                        )}
+
+                                        {result.missing_keywords && result.missing_keywords.length > 0 && (
+                                            <>
+                                                <h3 style={{marginTop: '20px'}}>🔍 Missing Keywords</h3>
+                                                <ul className="missing-keywords-list">
+                                                    {result.missing_keywords.map((keyword, idx) => (
+                                                        <li key={idx}>{keyword}</li>
+                                                    ))}
+                                                </ul>
+                                            </>
+                                        )}
+                                    </div>
+
+                                    {/* Right Column - Role Match & Buzzwords */}
+                                    <div className="results-section">
+                                        {result.role_match && result.role_match.length > 0 && (
+                                            <>
+                                                <h3>🎯 Role Match Scores</h3>
+                                                {result.role_match.map((role, idx) => (
+                                                    <div key={idx} className="role-match-item">
+                                                        <span>{role.role}</span>
+                                                        <span className="match-percentage">{role.match_percentage}%</span>
+                                                    </div>
+                                                ))}
+                                            </>
+                                        )}
+
+                                        {result.buzzwords_detected && result.buzzwords_detected.length > 0 && (
+                                            <>
+                                                <h3 style={{marginTop: '20px'}}>⚠️ Buzzwords Detected</h3>
+                                                {result.buzzwords_detected.map((buzzword, idx) => (
+                                                    <div key={idx} className="buzzword-item">
+                                                        <strong>"{buzzword.word}"</strong><br/>
+                                                        <small>{buzzword.context}</small><br/>
+                                                        <small style={{color: '#ef4444'}}>{buzzword.verdict}</small>
+                                                    </div>
+                                                ))}
+                                            </>
+                                        )}
+
+                                        {result.immediate_fixes && result.immediate_fixes.length > 0 && (
+                                            <>
+                                                <h3 style={{marginTop: '20px'}}>🔧 Immediate Fixes</h3>
+                                                <ul>
+                                                    {result.immediate_fixes.map((fix, idx) => (
+                                                        <li key={idx} style={{marginBottom: '10px'}}>{fix}</li>
+                                                    ))}
+                                                </ul>
+                                            </>
+                                        )}
+                                    </div>
+                                </div>
+
+                                {/* All Issues Section - Full List */}
+                                {(result.all_issues || result.critical_weaknesses) && (
+                                    <div className="results-section" style={{marginTop: '20px'}}>
+                                        <h3>📋 All Identified Issues ({result.all_issues ? result.all_issues.length : (result.critical_weaknesses ? result.critical_weaknesses.length : 0)})</h3>
+                                        <table className="issues-table">
+                                            <thead>
+                                                <tr>
+                                                    <th>Priority</th>
+                                                    <th>Issue</th>
+                                                    <th>Location</th>
+                                                    <th>How to Fix</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {(result.all_issues || result.critical_weaknesses || []).map((issue, idx) => (
+                                                    <tr key={idx}>
+                                                        <td className={`priority-${issue.priority ? issue.priority.toLowerCase() : 'medium'}`}>
+                                                            {issue.priority || 'Medium'}
+                                                        </td>
+                                                        <td>
+                                                            <strong>{issue.issue}</strong>
+                                                        </td>
+                                                        <td>
+                                                            <small style={{color: '#6b7280'}}>{issue.location || 'General'}</small>
+                                                        </td>
+                                                        <td>{issue.fix || issue.suggestion || 'Review and improve'}</td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
                                     </div>
                                 )}
 
-                                <h3 style={{marginTop: '30px', marginBottom: '15px'}}>
-                                    Top Issues to Fix
-                                </h3>
-
-                                <table className="issues-table">
-                                    <thead>
-                                        <tr>
-                                            <th>Priority</th>
-                                            <th>Issue</th>
-                                            <th>How to Fix</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {result.top_issues && result.top_issues.map((issue, idx) => (
-                                            <tr key={idx}>
-                                                <td className={`priority-${issue.priority.toLowerCase()}`}>
-                                                    {issue.priority}
-                                                </td>
-                                                <td>
-                                                    <strong>{issue.issue}</strong><br/>
-                                                    <small style={{color: '#6b7280'}}>{issue.location}</small>
-                                                </td>
-                                                <td>{issue.fix}</td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-
-                                {result.missing_keywords && result.missing_keywords.length > 0 && (
-                                    <div style={{marginTop: '30px', textAlign: 'left'}}>
-                                        <h4>🔍 Missing Keywords to Consider Adding:</h4>
-                                        <p style={{color: '#6b7280', marginTop: '10px'}}>
-                                            {result.missing_keywords.join(', ')}
-                                        </p>
+                                {/* Score Breakdown Table */}
+                                {result.breakdown && (
+                                    <div className="results-section" style={{marginTop: '20px'}}>
+                                        <h3>📊 Score Breakdown</h3>
+                                        <table className="issues-table">
+                                            <thead>
+                                                <tr>
+                                                    <th>Category</th>
+                                                    <th>Score</th>
+                                                    <th>Max</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <tr><td>Header & Contact</td><td>{result.breakdown.header_contact || 0}</td><td>10</td></tr>
+                                                <tr><td>Keyword Density</td><td>{result.breakdown.keyword_density || 0}</td><td>20</td></tr>
+                                                <tr><td>Quantified Results</td><td>{result.breakdown.quantified_results || 0}</td><td>20</td></tr>
+                                                <tr><td>Action Verbs</td><td>{result.breakdown.action_verbs || 0}</td><td>15</td></tr>
+                                                <tr><td>Formatting & Structure</td><td>{result.breakdown.formatting_structure || 0}</td><td>10</td></tr>
+                                                <tr><td>Skills Section</td><td>{result.breakdown.skills_section || 0}</td><td>10</td></tr>
+                                                <tr><td>Length & Brevity</td><td>{result.breakdown.length_brevity || 0}</td><td>5</td></tr>
+                                                <tr><td>Publications & Projects</td><td>{result.breakdown.publications_projects || 0}</td><td>5</td></tr>
+                                                {result.breakdown.recruiter_scan_penalty !== undefined && (
+                                                    <tr><td>Recruiter Scan Penalty</td><td>{result.breakdown.recruiter_scan_penalty}</td><td>0</td></tr>
+                                                )}
+                                                {result.breakdown.buzzword_repetition_penalty !== undefined && (
+                                                    <tr><td>Buzzword/Repetition Penalty</td><td>{result.breakdown.buzzword_repetition_penalty}</td><td>0</td></tr>
+                                                )}
+                                            </tbody>
+                                        </table>
                                     </div>
                                 )}
 
+                                {/* Email Capture for Full Report */}
                                 <div className="email-capture">
-                                    <h3>Want the Full Breakdown?</h3>
-                                    <p style={{color: '#6b7280', margin: '10px 0'}}>
-                                        Get a detailed PDF report with section-by-section analysis and 
-                                        personalized improvement tips.
-                                    </p>
+                                    <h3>📧 Get Your Full Report</h3>
+                                    <p>Enter your email to receive a detailed PDF with all findings, personalized recommendations, and a complete action plan.</p>
                                     {!emailSent ? (
                                         <div className="email-input">
                                             <input
@@ -577,12 +792,12 @@
                                                 onChange={(e) => setEmail(e.target.value)}
                                             />
                                             <button onClick={handleEmailSubmit}>
-                                                Send Report
+                                                Send Full Report
                                             </button>
                                         </div>
                                     ) : (
                                         <p style={{color: '#10b981', fontWeight: 'bold', marginTop: '20px'}}>
-                                            ✅ Report will be sent to {email}
+                                            ✅ Full report will be sent to {email}
                                         </p>
                                     )}
                                 </div>
@@ -594,6 +809,11 @@
                                         setFileName('');
                                         setEmail('');
                                         setEmailSent(false);
+                                        
+                                        // Track new scan in Amplitude
+                                        if (window.amplitude) {
+                                            amplitude.track('New Scan Started', {});
+                                        }
                                     }}
                                     style={{marginTop: '30px', background: '#6b7280'}}
                                 >
@@ -608,7 +828,7 @@
                     </div>
                     
                     <div className="privacy-note">
-                        🔒 Your resume is sent to a secure proxy for analysis. No API keys exposed.
+                        🔒 Your resume is sent to a secure proxy for analysis. No data is stored permanently. Analytics help us improve the tool.
                     </div>
                 </div>
             );
