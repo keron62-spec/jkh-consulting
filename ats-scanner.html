@@ -1,0 +1,699 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Free ATS Resume Scanner | JKH Consulting</title>
+    <meta name="description" content="Get your resume scored by an AI-powered ATS scanner. Instant feedback on formatting, keywords, and what recruiters actually see.">
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 40px;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            font-size: 1.2rem;
+            opacity: 0.9;
+        }
+
+        .card {
+            background: white;
+            border-radius: 16px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            margin-bottom: 30px;
+        }
+
+        .upload-section {
+            text-align: center;
+            padding: 40px 20px;
+        }
+
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 30px;
+            border-bottom: 2px solid #e5e7eb;
+        }
+
+        .tab {
+            padding: 12px 24px;
+            background: none;
+            border: none;
+            font-size: 16px;
+            cursor: pointer;
+            color: #6b7280;
+            border-bottom: 3px solid transparent;
+            transition: all 0.3s;
+        }
+
+        .tab.active {
+            color: #667eea;
+            border-bottom-color: #667eea;
+            font-weight: 600;
+        }
+
+        textarea {
+            width: 100%;
+            min-height: 300px;
+            padding: 16px;
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            resize: vertical;
+            margin-bottom: 20px;
+        }
+
+        textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .file-upload {
+            border: 3px dashed #667eea;
+            border-radius: 12px;
+            padding: 60px 20px;
+            cursor: pointer;
+            transition: all 0.3s;
+            background: #f9fafb;
+        }
+
+        .file-upload:hover {
+            background: #f3f4f6;
+            border-color: #764ba2;
+        }
+
+        .file-upload input {
+            display: none;
+        }
+
+        .file-upload-icon {
+            font-size: 48px;
+            margin-bottom: 10px;
+        }
+
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 16px 40px;
+            font-size: 18px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: transform 0.2s;
+            width: 100%;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+        }
+
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+        }
+
+        .spinner {
+            border: 4px solid #f3f4f6;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .score-display {
+            text-align: center;
+            padding: 40px;
+        }
+
+        .score-circle {
+            width: 200px;
+            height: 200px;
+            margin: 0 auto 30px;
+            position: relative;
+        }
+
+        .score-number {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 48px;
+            font-weight: bold;
+        }
+
+        .score-label {
+            font-size: 24px;
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+
+        .score-excellent { color: #10b981; }
+        .score-good { color: #3b82f6; }
+        .score-moderate { color: #f59e0b; }
+        .score-poor { color: #ef4444; }
+
+        .issues-table {
+            width: 100%;
+            margin-top: 30px;
+            border-collapse: collapse;
+        }
+
+        .issues-table th,
+        .issues-table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        .issues-table th {
+            background: #f9fafb;
+            font-weight: 600;
+            color: #374151;
+        }
+
+        .priority-high { 
+            color: #ef4444; 
+            font-weight: 600;
+        }
+
+        .priority-medium { 
+            color: #f59e0b; 
+        }
+
+        .priority-low { 
+            color: #6b7280; 
+        }
+
+        .email-capture {
+            background: #f9fafb;
+            padding: 30px;
+            border-radius: 8px;
+            margin-top: 30px;
+            text-align: center;
+        }
+
+        .email-input {
+            display: flex;
+            gap: 10px;
+            max-width: 500px;
+            margin: 20px auto 0;
+        }
+
+        .email-input input {
+            flex: 1;
+            padding: 12px 16px;
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            font-size: 16px;
+        }
+
+        .email-input button {
+            width: auto;
+            padding: 12px 30px;
+        }
+
+        .back-link {
+            text-align: center;
+            margin-top: 30px;
+        }
+
+        .back-link a {
+            color: white;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 16px;
+        }
+
+        .back-link a:hover {
+            text-decoration: underline;
+        }
+
+        .strengths {
+            background: #ecfdf5;
+            border-left: 4px solid #10b981;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+
+        .strengths h3 {
+            color: #065f46;
+            margin-bottom: 10px;
+        }
+
+        .strengths ul {
+            margin-left: 20px;
+        }
+
+        .strengths li {
+            color: #047857;
+            margin: 5px 0;
+        }
+
+        .privacy-note {
+            font-size: 12px;
+            color: #6b7280;
+            text-align: center;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState } = React;
+
+        // DeepSeek API Configuration
+        const DEEPSEEK_API_KEY = "sk-58f582bd1dec471fbcf713074318043e";
+        const DEEPSEEK_API_URL = "https://api.deepseek.com/v1/chat/completions";
+
+        function ATSScanner() {
+            const [activeTab, setActiveTab] = useState('paste');
+            const [resumeText, setResumeText] = useState('');
+            const [fileName, setFileName] = useState('');
+            const [loading, setLoading] = useState(false);
+            const [result, setResult] = useState(null);
+            const [email, setEmail] = useState('');
+            const [emailSent, setEmailSent] = useState(false);
+
+            const handleFileUpload = (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+
+                setFileName(file.name);
+                const reader = new FileReader();
+                
+                reader.onload = (event) => {
+                    setResumeText(event.target.result);
+                };
+                
+                reader.readAsText(file);
+            };
+
+            const analyzeResume = async () => {
+                if (!resumeText.trim()) {
+                    alert('Please paste your resume text or upload a file first.');
+                    return;
+                }
+
+                setLoading(true);
+                setResult(null);
+
+                const systemPrompt = `You are an expert ATS (Applicant Tracking System) resume scanner. Analyze this resume and provide a detailed score based on the following criteria:
+
+SCORING BREAKDOWN (Total 100 points):
+1. Header Formatting (10 points) - Clean contact info, proper email/phone/LinkedIn format, no stray characters
+2. Keyword Density (20 points) - Industry keywords, role-specific terms, skills coverage
+3. Quantified Results (20 points) - Numbers, percentages, dollar amounts, measurable impact
+4. Action Verbs (15 points) - Strong verbs like "Led," "Managed," "Delivered" vs weak passive voice
+5. Formatting Consistency (10 points) - Uniform bullets, consistent dates, proper spacing
+6. Skills Section (10 points) - Clear categorization, relevant tools, ATS-friendly format
+7. Length & Brevity (5 points) - Concise, no fluff, appropriate length
+8. Publications/Projects (10 points) - Credibility additions
+
+CRITICAL RULES:
+- ALWAYS include at least 3 top issues (prioritized: High, Medium, Low)
+- Be SPECIFIC in fixes - not "improve formatting" but "Change dates from 03/2024 to Mar 2024"
+- Missing quantified results is ALWAYS a high-priority issue
+- Passive voice is ALWAYS at least medium priority
+
+Respond ONLY with a valid JSON object in this exact format (no markdown, no backticks, no explanation):
+
+{
+  "total_score": 85,
+  "label": "Good",
+  "breakdown": {
+    "header_formatting": 9,
+    "keyword_density": 16,
+    "quantified_results": 18,
+    "action_verbs": 13,
+    "formatting_consistency": 8,
+    "skills_section": 9,
+    "length_brevity": 4,
+    "publications": 8
+  },
+  "top_issues": [
+    {
+      "priority": "High",
+      "issue": "Missing quantified metrics in 4 out of 12 bullets",
+      "location": "Experience section",
+      "fix": "Add specific numbers: 'Led team of X people', 'Reduced costs by Y%', 'Managed budget of $Z'"
+    },
+    {
+      "priority": "Medium",
+      "issue": "LinkedIn URL incomplete",
+      "location": "Header",
+      "fix": "Change 'in/jeremy-harrilal' to 'linkedin.com/in/jeremy-harrilal-713a29b1'"
+    },
+    {
+      "priority": "Low",
+      "issue": "Inconsistent date formatting",
+      "location": "Experience section",
+      "fix": "Standardize all dates to 'MMM YYYY – MMM YYYY' format"
+    }
+  ],
+  "strengths": [
+    "Strong use of action verbs throughout experience section",
+    "Clear skills categorization with relevant technical tools",
+    "Published research in peer-reviewed journals adds credibility"
+  ],
+  "missing_keywords": [
+    "Project Management",
+    "Stakeholder Engagement",
+    "Risk Management",
+    "Data Analysis",
+    "Process Improvement"
+  ]
+}`;
+
+                try {
+                    const response = await fetch(DEEPSEEK_API_URL, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${DEEPSEEK_API_KEY}`
+                        },
+                        body: JSON.stringify({
+                            model: 'deepseek-chat',
+                            messages: [
+                                { role: 'system', content: systemPrompt },
+                                { role: 'user', content: `RESUME TEXT:\n\n${resumeText}` }
+                            ],
+                            temperature: 0.3,
+                            max_tokens: 4000
+                        })
+                    });
+
+                    const data = await response.json();
+                    
+                    if (data.error) {
+                        console.error('DeepSeek API Error:', data.error);
+                        throw new Error(data.error.message || 'API Error');
+                    }
+
+                    if (data.choices && data.choices[0] && data.choices[0].message) {
+                        let jsonText = data.choices[0].message.content.trim();
+                        // Remove markdown code fences if present
+                        jsonText = jsonText.replace(/```json\n?/g, '').replace(/```\n?/g, '');
+                        const parsedResult = JSON.parse(jsonText);
+                        setResult(parsedResult);
+                    } else {
+                        throw new Error('Invalid response format');
+                    }
+                } catch (error) {
+                    console.error('Analysis error:', error);
+                    alert('Error analyzing resume. Please try again. Error: ' + error.message);
+                } finally {
+                    setLoading(false);
+                }
+            };
+
+            const handleEmailSubmit = async () => {
+                if (!email || !email.includes('@')) {
+                    alert('Please enter a valid email address');
+                    return;
+                }
+
+                // For now, just simulate success
+                // In production, connect to n8n webhook
+                setEmailSent(true);
+                alert('Full report will be sent to: ' + email + '\n\n(Email integration coming soon - your data has been captured)');
+            };
+
+            const getScoreColor = (score) => {
+                if (score >= 90) return 'score-excellent';
+                if (score >= 80) return 'score-good';
+                if (score >= 70) return 'score-moderate';
+                return 'score-poor';
+            };
+
+            const getScoreGrade = (score) => {
+                if (score >= 90) return 'Excellent';
+                if (score >= 80) return 'Good';
+                if (score >= 70) return 'Moderate';
+                return 'Needs Work';
+            };
+
+            return (
+                <div className="container">
+                    <div className="header">
+                        <h1>🎯 ATS Resume Scanner</h1>
+                        <p>Get instant feedback on how recruiters' systems see your resume</p>
+                    </div>
+
+                    <div className="card">
+                        {!loading && !result && (
+                            <>
+                                <div className="tabs">
+                                    <button 
+                                        className={`tab ${activeTab === 'paste' ? 'active' : ''}`}
+                                        onClick={() => setActiveTab('paste')}
+                                    >
+                                        📋 Paste Text
+                                    </button>
+                                    <button 
+                                        className={`tab ${activeTab === 'upload' ? 'active' : ''}`}
+                                        onClick={() => setActiveTab('upload')}
+                                    >
+                                        📄 Upload File
+                                    </button>
+                                </div>
+
+                                {activeTab === 'paste' && (
+                                    <div>
+                                        <textarea
+                                            placeholder="Paste your resume text here..."
+                                            value={resumeText}
+                                            onChange={(e) => setResumeText(e.target.value)}
+                                        />
+                                        <button onClick={analyzeResume}>
+                                            Analyze My Resume
+                                        </button>
+                                    </div>
+                                )}
+
+                                {activeTab === 'upload' && (
+                                    <div>
+                                        <label className="file-upload">
+                                            <input 
+                                                type="file" 
+                                                accept=".txt"
+                                                onChange={handleFileUpload}
+                                            />
+                                            <div className="file-upload-icon">📁</div>
+                                            <div>
+                                                {fileName ? (
+                                                    <strong>{fileName}</strong>
+                                                ) : (
+                                                    <>
+                                                        <strong>Click to upload</strong> or drag and drop<br/>
+                                                        <small>Supports .txt files</small>
+                                                    </>
+                                                )}
+                                            </div>
+                                        </label>
+                                        <button 
+                                            onClick={analyzeResume}
+                                            disabled={!resumeText}
+                                            style={{marginTop: '20px'}}
+                                        >
+                                            Analyze My Resume
+                                        </button>
+                                    </div>
+                                )}
+                            </>
+                        )}
+
+                        {loading && (
+                            <div className="loading">
+                                <div className="spinner"></div>
+                                <p>Analyzing your resume...</p>
+                                <small>This may take 10-15 seconds</small>
+                            </div>
+                        )}
+
+                        {result && (
+                            <div className="score-display">
+                                <div className="score-circle">
+                                    <svg width="200" height="200">
+                                        <circle
+                                            cx="100"
+                                            cy="100"
+                                            r="90"
+                                            fill="none"
+                                            stroke="#e5e7eb"
+                                            strokeWidth="12"
+                                        />
+                                        <circle
+                                            cx="100"
+                                            cy="100"
+                                            r="90"
+                                            fill="none"
+                                            stroke={result.total_score >= 90 ? '#10b981' : 
+                                                   result.total_score >= 80 ? '#3b82f6' :
+                                                   result.total_score >= 70 ? '#f59e0b' : '#ef4444'}
+                                            strokeWidth="12"
+                                            strokeDasharray={`${(result.total_score / 100) * 565} 565`}
+                                            strokeLinecap="round"
+                                            transform="rotate(-90 100 100)"
+                                        />
+                                    </svg>
+                                    <div className={`score-number ${getScoreColor(result.total_score)}`}>
+                                        {result.total_score}
+                                    </div>
+                                </div>
+
+                                <div className={`score-label ${getScoreColor(result.total_score)}`}>
+                                    {getScoreGrade(result.total_score)}
+                                </div>
+
+                                {result.strengths && result.strengths.length > 0 && (
+                                    <div className="strengths">
+                                        <h3>✅ What's Working Well</h3>
+                                        <ul>
+                                            {result.strengths.map((strength, idx) => (
+                                                <li key={idx}>{strength}</li>
+                                            ))}
+                                        </ul>
+                                    </div>
+                                )}
+
+                                <h3 style={{marginTop: '30px', marginBottom: '15px'}}>
+                                    Top Issues to Fix
+                                </h3>
+
+                                <table className="issues-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Priority</th>
+                                            <th>Issue</th>
+                                            <th>How to Fix</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {result.top_issues && result.top_issues.map((issue, idx) => (
+                                            <tr key={idx}>
+                                                <td className={`priority-${issue.priority.toLowerCase()}`}>
+                                                    {issue.priority}
+                                                </td>
+                                                <td>
+                                                    <strong>{issue.issue}</strong><br/>
+                                                    <small style={{color: '#6b7280'}}>{issue.location}</small>
+                                                </td>
+                                                <td>{issue.fix}</td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+
+                                {result.missing_keywords && result.missing_keywords.length > 0 && (
+                                    <div style={{marginTop: '30px', textAlign: 'left'}}>
+                                        <h4>🔍 Missing Keywords to Consider Adding:</h4>
+                                        <p style={{color: '#6b7280', marginTop: '10px'}}>
+                                            {result.missing_keywords.join(', ')}
+                                        </p>
+                                    </div>
+                                )}
+
+                                <div className="email-capture">
+                                    <h3>Want the Full Breakdown?</h3>
+                                    <p style={{color: '#6b7280', margin: '10px 0'}}>
+                                        Get a detailed PDF report with section-by-section analysis and 
+                                        personalized improvement tips.
+                                    </p>
+                                    {!emailSent ? (
+                                        <div className="email-input">
+                                            <input
+                                                type="email"
+                                                placeholder="your.email@example.com"
+                                                value={email}
+                                                onChange={(e) => setEmail(e.target.value)}
+                                            />
+                                            <button onClick={handleEmailSubmit}>
+                                                Send Report
+                                            </button>
+                                        </div>
+                                    ) : (
+                                        <p style={{color: '#10b981', fontWeight: 'bold', marginTop: '20px'}}>
+                                            ✅ Report will be sent to {email}
+                                        </p>
+                                    )}
+                                </div>
+
+                                <button 
+                                    onClick={() => {
+                                        setResult(null);
+                                        setResumeText('');
+                                        setFileName('');
+                                        setEmail('');
+                                        setEmailSent(false);
+                                    }}
+                                    style={{marginTop: '30px', background: '#6b7280'}}
+                                >
+                                    Scan Another Resume
+                                </button>
+                            </div>
+                        )}
+                    </div>
+
+                    <div className="back-link">
+                        <a href="https://jkh-consulting.keron62.workers.dev/index.html">← Back to JKH Consulting</a>
+                    </div>
+                    
+                    <div className="privacy-note">
+                        🔒 Your resume is sent to DeepSeek API for analysis. No data is stored permanently.
+                    </div>
+                </div>
+            );
+        }
+
+        ReactDOM.render(<ATSScanner />, document.getElementById('root'));
+    </script>
+</body>
+</html>
