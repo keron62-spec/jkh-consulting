@@ -304,13 +304,10 @@
         const { useState } = React;
 
         // ============================================================
-        // STEP 1: PASTE YOUR GOOGLE GEMINI API KEY HERE
+        // CLOUDFLARE WORKER PROXY ENDPOINT
+        // Your API key is safely stored in the Worker, not here
         // ============================================================
-        // Get your key from: https://aistudio.google.com/app/apikey
-        // Replace "YOUR_GEMINI_API_KEY_HERE" with your actual key
-        const GEMINI_API_KEY = "AIzaSyAcRjzjFzoK5qrZQHVHesOr44Zy0643u0U";
-        // Using Gemini 3.1 Flash Lite Preview - Free tier eligible
-        const GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite-preview:generateContent";
+        const WORKER_URL = "https://ats-proxy.keron62.workers.dev";
         // ============================================================
 
         function ATSScanner() {
@@ -345,103 +342,20 @@
                 setLoading(true);
                 setResult(null);
 
-                const prompt = `You are an expert ATS (Applicant Tracking System) resume scanner. Analyze this resume and provide a detailed score based on the following criteria:
-
-SCORING BREAKDOWN (Total 100 points):
-1. Header Formatting (10 points) - Clean contact info, proper email/phone/LinkedIn format, no stray characters
-2. Keyword Density (20 points) - Industry keywords, role-specific terms, skills coverage
-3. Quantified Results (20 points) - Numbers, percentages, dollar amounts, measurable impact
-4. Action Verbs (15 points) - Strong verbs like "Led," "Managed," "Delivered" vs weak passive voice
-5. Formatting Consistency (10 points) - Uniform bullets, consistent dates, proper spacing
-6. Skills Section (10 points) - Clear categorization, relevant tools, ATS-friendly format
-7. Length & Brevity (5 points) - Concise, no fluff, appropriate length
-8. Publications/Projects (10 points) - Credibility additions
-
-CRITICAL RULES:
-- ALWAYS include at least 3 top issues (prioritized: High, Medium, Low)
-- Be SPECIFIC in fixes - not "improve formatting" but "Change dates from 03/2024 to Mar 2024"
-- Missing quantified results is ALWAYS a high-priority issue
-- Passive voice is ALWAYS at least medium priority
-
-Respond ONLY with a valid JSON object in this exact format (no markdown, no backticks, no explanation):
-
-{
-  "total_score": 85,
-  "label": "Good",
-  "breakdown": {
-    "header_formatting": 9,
-    "keyword_density": 16,
-    "quantified_results": 18,
-    "action_verbs": 13,
-    "formatting_consistency": 8,
-    "skills_section": 9,
-    "length_brevity": 4,
-    "publications": 8
-  },
-  "top_issues": [
-    {
-      "priority": "High",
-      "issue": "Missing quantified metrics in 4 out of 12 bullets",
-      "location": "Experience section",
-      "fix": "Add specific numbers: 'Led team of X people', 'Reduced costs by Y%', 'Managed budget of $Z'"
-    },
-    {
-      "priority": "Medium",
-      "issue": "LinkedIn URL incomplete",
-      "location": "Header",
-      "fix": "Change 'in/jeremy-harrilal' to 'linkedin.com/in/jeremy-harrilal-713a29b1'"
-    },
-    {
-      "priority": "Low",
-      "issue": "Inconsistent date formatting",
-      "location": "Experience section",
-      "fix": "Standardize all dates to 'MMM YYYY – MMM YYYY' format"
-    }
-  ],
-  "strengths": [
-    "Strong use of action verbs throughout experience section",
-    "Clear skills categorization with relevant technical tools",
-    "Published research in peer-reviewed journals adds credibility"
-  ],
-  "missing_keywords": [
-    "Project Management",
-    "Stakeholder Engagement",
-    "Risk Management",
-    "Data Analysis",
-    "Process Improvement"
-  ]
-}
-
-RESUME TEXT:
-${resumeText}`;
-
                 try {
-                    const response = await fetch(`${GEMINI_API_URL}?key=${GEMINI_API_KEY}`, {
+                    const response = await fetch(WORKER_URL, {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json'
                         },
-                        body: JSON.stringify({
-                            contents: [{
-                                parts: [{
-                                    text: prompt
-                                }]
-                            }],
-                            generationConfig: {
-                                temperature: 0.3,
-                                maxOutputTokens: 4000
-                            }
-                        })
+                        body: JSON.stringify({ resumeText: resumeText })
                     });
 
                     const data = await response.json();
                     
                     if (data.error) {
-                        console.error('Gemini API Error:', data.error);
-                        if (data.error.message.includes('not found') || data.error.message.includes('model')) {
-                            throw new Error('Gemini 3.1 model not available. Try using "gemini-2.0-flash-lite-preview" instead.');
-                        }
-                        throw new Error(data.error.message || 'API Error');
+                        console.error('Worker Error:', data.error);
+                        throw new Error(data.error || 'Analysis failed');
                     }
 
                     if (data.candidates && data.candidates[0] && data.candidates[0].content) {
@@ -451,7 +365,7 @@ ${resumeText}`;
                         const parsedResult = JSON.parse(jsonText);
                         setResult(parsedResult);
                     } else {
-                        throw new Error('Invalid response format');
+                        throw new Error('Invalid response format from worker');
                     }
                 } catch (error) {
                     console.error('Analysis error:', error);
@@ -694,7 +608,7 @@ ${resumeText}`;
                     </div>
                     
                     <div className="privacy-note">
-                        🔒 Your resume is sent to Google Gemini API for analysis. No data is stored permanently.
+                        🔒 Your resume is sent to a secure proxy for analysis. No API keys exposed.
                     </div>
                 </div>
             );
