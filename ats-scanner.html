@@ -380,6 +380,30 @@
             padding-bottom: 8px;
         }
 
+        .disclaimer-box {
+            background: #fffbeb;
+            border-left: 4px solid #f59e0b;
+            padding: 16px;
+            margin-top: 16px;
+            border-radius: 8px;
+            font-size: 14px;
+        }
+
+        .disclaimer-box.critical {
+            background: #fef2f2;
+            border-left-color: #ef4444;
+        }
+
+        .disclaimer-box.warning {
+            background: #fffbeb;
+            border-left-color: #f59e0b;
+        }
+
+        .disclaimer-box.suggestion {
+            background: #eff6ff;
+            border-left-color: #3b82f6;
+        }
+
         .issues-table {
             width: 100%;
             border-collapse: collapse;
@@ -456,6 +480,11 @@
         .match-percentage {
             font-weight: bold;
             color: #667eea;
+        }
+
+        .match-strong {
+            color: #10b981;
+            font-weight: bold;
         }
 
         .email-capture {
@@ -568,7 +597,6 @@
                 setLoading(true);
                 setResult(null);
 
-                // Track analysis start in Amplitude
                 if (window.amplitude) {
                     amplitude.track('Resume Analysis Started', {
                         source: activeTab,
@@ -598,7 +626,6 @@
                         const parsedResult = JSON.parse(jsonText);
                         setResult(parsedResult);
                         
-                        // Track successful analysis in Amplitude
                         if (window.amplitude) {
                             amplitude.track('Resume Analysis Completed', {
                                 total_score: parsedResult.total_ats_score,
@@ -678,8 +705,73 @@
             };
 
             const getScalePosition = (positionScore) => {
-                // Convert from -5 to +5 to percentage 0-100
                 return ((positionScore + 5) / 10) * 100;
+            };
+
+            const getAlignmentScoreColor = (score) => {
+                if (score >= 8) return 'green';
+                if (score >= 5) return 'orange';
+                return 'red';
+            };
+
+            const getRoleMatchDisclaimer = (roleMatches, atsScore, positionScore) => {
+                if (!roleMatches || roleMatches.length === 0) return null;
+                
+                const strongMatches = roleMatches.filter(m => m.match_percentage >= 80);
+                const strongMatchCount = strongMatches.length;
+                const isPositionedOutsideRange = Math.abs(positionScore) > 1.5;
+                const isLowAts = atsScore < 70;
+                
+                if (strongMatchCount === 0) {
+                    return {
+                        type: 'critical',
+                        title: 'CRITICAL: No strong role matches detected',
+                        message: `Your ATS score (${atsScore}) and positioning score (${positionScore > 0 ? '+' : ''}${positionScore}) are directly limiting your role matches.`,
+                        actions: [
+                            'Replace weak verbs ("assisted" → "managed" where accurate)',
+                            'Add quantified results to bullets without metrics',
+                            'Review the "Missing Keywords" section below'
+                        ],
+                        callToAction: 'Start with "Immediate Fixes" at the bottom of this report'
+                    };
+                }
+                
+                if (strongMatchCount === 1) {
+                    if (isLowAts || isPositionedOutsideRange) {
+                        const isOverPositioned = positionScore > 1.5;
+                        const positionAdvice = isOverPositioned 
+                            ? 'Your over-positioning score suggests your language may be inflated for your level.'
+                            : positionScore < -1.5 
+                                ? 'Your under-positioning score suggests your language sounds junior for your level.'
+                                : 'Your ATS score indicates missing keywords and weak quantification.';
+                        
+                        return {
+                            type: 'warning',
+                            title: '⚠️ You have 1 strong role match. Aim for 2-3.',
+                            message: `${positionAdvice} This is limiting you to only 1 strong match.`,
+                            actions: [
+                                isOverPositioned ? 'Review the "potential_inflation" flags in your analysis' : 'Replace weak verbs with stronger alternatives where accurate',
+                                isOverPositioned ? 'Dial back ownership claims where accuracy allows' : 'Add quantified results to bullets without metrics',
+                                'Add keywords from adjacent roles to broaden your appeal'
+                            ],
+                            callToAction: 'Aim for 2-3 roles above 80% for better job search breadth'
+                        };
+                    } else {
+                        return {
+                            type: 'suggestion',
+                            title: '📌 You have 1 strong role match. Aim for 2-3.',
+                            message: 'Your resume is well-positioned, but you are currently only competitive for 1 role.',
+                            actions: [
+                                'Add keywords from adjacent roles (see "Missing Keywords")',
+                                'Tailor your resume to a second target role',
+                                'Strengthen the 2nd and 3rd bullet in each role section'
+                            ],
+                            callToAction: 'Aim for 2-3 roles above 80% to keep your options open'
+                        };
+                    }
+                }
+                
+                return null;
             };
 
             return (
@@ -805,7 +897,6 @@
                                             </span>
                                         </div>
 
-                                        {/* Position Scale Visual */}
                                         <div className="position-scale">
                                             <div className="scale-line">
                                                 <div 
@@ -821,7 +912,6 @@
                                             </div>
                                         </div>
 
-                                        {/* Alignment Score Bar */}
                                         <div>
                                             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}>
                                                 <span style={{ fontSize: '14px', color: '#6b7280' }}>Alignment Score</span>
@@ -837,7 +927,6 @@
                                             </div>
                                         </div>
 
-                                        {/* Stats Grid */}
                                         <div className="semantic-stats">
                                             <div className="semantic-stat">
                                                 <div className="semantic-stat-label">Position Score</div>
@@ -858,19 +947,26 @@
                                             </div>
                                         </div>
 
-                                        {/* Explainer */}
                                         <div className="explainer" onClick={() => setShowExplainer(!showExplainer)}>
                                             ℹ️ How to read this score
                                             <div className={`explainer-content ${showExplainer ? 'show' : ''}`}>
-                                                Scores range from <strong>-5.0 (under-positioned)</strong> to <strong>+5.0 (over-positioned)</strong>.<br/>
+                                                <strong>POSITION SCORE (-5 to +5):</strong><br/>
+                                                Scores range from <strong>-5.0 (under-positioned)</strong> to <strong>+5.0 (over-positioned)</strong>.
                                                 <strong>0 is perfectly aligned</strong> — your verbs match your experience level.<br/><br/>
                                                 🟢 <strong>-1.5 to +1.5:</strong> Acceptable range. Minor improvements can reach perfect alignment.<br/>
                                                 🟠 <strong>-3.5 to -1.5 or +1.5 to +3.5:</strong> Moderate adjustments needed. Recruiters may notice positioning issues.<br/>
-                                                🔴 <strong>Beyond ±3.5:</strong> Critical repositioning needed. High risk of being perceived as over or under-qualified.
+                                                🔴 <strong>Beyond ±3.5:</strong> Critical repositioning needed. High risk of being perceived as over or under-qualified.<br/><br/>
+                                                <strong>ALIGNMENT SCORE (1-10):</strong><br/>
+                                                Measures how close your resume is to perfectly positioned.<br/><br/>
+                                                <strong>10:</strong> Perfect alignment — no changes needed<br/>
+                                                <strong>8-9:</strong> Excellent — minor tweaks only<br/>
+                                                <strong>6-7:</strong> Good — moderate adjustments recommended<br/>
+                                                <strong>4-5:</strong> Fair — significant improvements needed<br/>
+                                                <strong>1-3:</strong> Poor — major repositioning required<br/><br/>
+                                                The alignment score complements the position score. A position score of +2.5 (moderately over-positioned) with an alignment score of 6 means you have moderate work to do. The same position score with an alignment score of 3 means urgent changes are needed.
                                             </div>
                                         </div>
 
-                                        {/* Semantic Flags */}
                                         {result.semantic_analysis.flags && result.semantic_analysis.flags.length > 0 && (
                                             <div style={{ marginTop: '20px' }}>
                                                 <h4 style={{ marginBottom: '10px', color: '#1a365d' }}>Semantic Flags</h4>
@@ -888,7 +984,6 @@
                                             </div>
                                         )}
 
-                                        {/* Semantic Recommendations */}
                                         {result.semantic_analysis.recommendations && result.semantic_analysis.recommendations.length > 0 && (
                                             <div style={{ marginTop: '20px' }}>
                                                 <h4 style={{ marginBottom: '10px', color: '#1a365d' }}>Semantic Recommendations</h4>
@@ -903,7 +998,6 @@
                                 )}
 
                                 <div className="results-grid">
-                                    {/* Left Column - Strengths & Market Positioning */}
                                     <div className="results-section">
                                         <h3>✅ What's Working Well</h3>
                                         {result.strengths && result.strengths.length > 0 ? (
@@ -936,18 +1030,44 @@
                                         )}
                                     </div>
 
-                                    {/* Right Column - Role Match & Immediate Fixes */}
                                     <div className="results-section">
-                                        {result.role_match && result.role_match.length > 0 && (
+                                        <h3>🎯 Role Match Scores</h3>
+                                        {result.role_match && result.role_match.length > 0 ? (
                                             <>
-                                                <h3>🎯 Role Match Scores</h3>
                                                 {result.role_match.map((role, idx) => (
                                                     <div key={idx} className="role-match-item">
                                                         <span>{role.role}</span>
-                                                        <span className="match-percentage">{role.match_percentage}%</span>
+                                                        <span className={role.match_percentage >= 80 ? "match-strong" : "match-percentage"}>
+                                                            {role.match_percentage}%
+                                                        </span>
                                                     </div>
                                                 ))}
+                                                
+                                                {(() => {
+                                                    const disclaimer = getRoleMatchDisclaimer(
+                                                        result.role_match, 
+                                                        result.total_ats_score, 
+                                                        result.semantic_analysis?.position_score || 0
+                                                    );
+                                                    if (disclaimer) {
+                                                        return (
+                                                            <div className={`disclaimer-box ${disclaimer.type}`}>
+                                                                <strong>{disclaimer.title}</strong><br/><br/>
+                                                                <p>{disclaimer.message}</p>
+                                                                <ul style={{ marginTop: '10px', marginLeft: '20px' }}>
+                                                                    {disclaimer.actions.map((action, i) => (
+                                                                        <li key={i}>{action}</li>
+                                                                    ))}
+                                                                </ul>
+                                                                <p style={{ marginTop: '10px', fontWeight: 'bold' }}>→ {disclaimer.callToAction}</p>
+                                                            </div>
+                                                        );
+                                                    }
+                                                    return null;
+                                                })()}
                                             </>
+                                        ) : (
+                                            <p>No role matches identified</p>
                                         )}
 
                                         {result.immediate_fixes && result.immediate_fixes.length > 0 && (
@@ -963,7 +1083,6 @@
                                     </div>
                                 </div>
 
-                                {/* All Issues Section - Full List */}
                                 {result.all_issues && result.all_issues.length > 0 && (
                                     <div className="results-section" style={{marginTop: '20px'}}>
                                         <h3>📋 All Identified Issues ({result.all_issues.length})</h3>
@@ -982,12 +1101,8 @@
                                                         <td className={`priority-${issue.priority ? issue.priority.toLowerCase() : 'medium'}`}>
                                                             {issue.priority || 'Medium'}
                                                         </td>
-                                                        <td>
-                                                            <strong>{issue.issue}</strong>
-                                                        </td>
-                                                        <td>
-                                                            <small style={{color: '#6b7280'}}>{issue.location || 'General'}</small>
-                                                        </td>
+                                                        <td><strong>{issue.issue}</strong></td>
+                                                        <td><small style={{color: '#6b7280'}}>{issue.location || 'General'}</small></td>
                                                         <td>{issue.fix || issue.suggestion || 'Review and improve'}</td>
                                                     </tr>
                                                 ))}
@@ -996,7 +1111,6 @@
                                     </div>
                                 )}
 
-                                {/* Score Breakdown Table */}
                                 {result.breakdown && (
                                     <div className="results-section" style={{marginTop: '20px'}}>
                                         <h3>📊 Score Breakdown</h3>
@@ -1028,7 +1142,6 @@
                                     </div>
                                 )}
 
-                                {/* Email Capture for Full Report */}
                                 <div className="email-capture">
                                     <h3>📧 Get Your Full Report</h3>
                                     <p>Enter your email to receive a detailed PDF with all findings, personalized recommendations, and a complete action plan.</p>
