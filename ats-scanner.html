@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Free ATS Resume Scanner | JKH Consulting</title>
+    <title>ATS Resume Scanner | JKH Consulting</title>
     <meta name="description" content="Get your resume scored by an AI-powered ATS scanner. Instant feedback on formatting, keywords, and what recruiters actually see.">
     
     <!-- Google Analytics -->
@@ -217,6 +217,148 @@
         .score-moderate { color: #f59e0b; }
         .score-poor { color: #ef4444; }
 
+        .semantic-container {
+            background: #f8fafc;
+            border-radius: 16px;
+            padding: 24px;
+            margin: 30px 0;
+            border: 1px solid #e2e8f0;
+        }
+
+        .semantic-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .semantic-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #1a365d;
+        }
+
+        .semantic-badge {
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .semantic-badge.green { background: #d1fae5; color: #065f46; }
+        .semantic-badge.orange { background: #fed7aa; color: #9b2c1d; }
+        .semantic-badge.red { background: #fee2e2; color: #991b1b; }
+
+        .position-scale {
+            margin: 20px 0;
+            position: relative;
+            padding: 20px 0;
+        }
+
+        .scale-line {
+            height: 8px;
+            background: linear-gradient(90deg, #ef4444 0%, #f59e0b 25%, #10b981 50%, #f59e0b 75%, #ef4444 100%);
+            border-radius: 4px;
+            position: relative;
+            margin: 20px 0;
+        }
+
+        .scale-marker {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            background: #1a365d;
+            border: 3px solid white;
+            border-radius: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .scale-marker:hover {
+            transform: translate(-50%, -50%) scale(1.2);
+        }
+
+        .scale-labels {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 10px;
+            font-size: 12px;
+            color: #6b7280;
+        }
+
+        .alignment-bar {
+            background: #e5e7eb;
+            border-radius: 10px;
+            height: 10px;
+            overflow: hidden;
+            margin: 15px 0;
+        }
+
+        .alignment-fill {
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            height: 100%;
+            border-radius: 10px;
+            transition: width 0.5s ease;
+        }
+
+        .semantic-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+            padding: 15px;
+            background: white;
+            border-radius: 12px;
+        }
+
+        .semantic-stat {
+            text-align: center;
+        }
+
+        .semantic-stat-label {
+            font-size: 12px;
+            color: #6b7280;
+            margin-bottom: 5px;
+        }
+
+        .semantic-stat-value {
+            font-size: 20px;
+            font-weight: 700;
+            color: #1a365d;
+        }
+
+        .explainer {
+            background: #f1f5f9;
+            padding: 15px;
+            border-radius: 12px;
+            margin: 20px 0 0;
+            font-size: 14px;
+            color: #475569;
+            line-height: 1.5;
+            cursor: pointer;
+        }
+
+        .explainer:hover {
+            background: #e2e8f0;
+        }
+
+        .explainer-content {
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px solid #cbd5e1;
+            font-size: 13px;
+            display: none;
+        }
+
+        .explainer-content.show {
+            display: block;
+        }
+
         .results-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
@@ -290,12 +432,18 @@
             color: #f59e0b;
         }
 
-        .buzzword-item {
+        .flag-item {
             background: #fef2f2;
-            padding: 10px;
+            padding: 12px;
             margin: 10px 0;
             border-radius: 8px;
             border-left: 4px solid #ef4444;
+        }
+
+        .flag-suggestion {
+            margin-top: 8px;
+            font-size: 13px;
+            color: #6b7280;
         }
 
         .role-match-item {
@@ -371,6 +519,10 @@
             .email-input button {
                 width: 100%;
             }
+            .semantic-header {
+                flex-direction: column;
+                align-items: flex-start;
+            }
         }
     </style>
 </head>
@@ -391,6 +543,7 @@
             const [result, setResult] = useState(null);
             const [email, setEmail] = useState('');
             const [emailSent, setEmailSent] = useState(false);
+            const [showExplainer, setShowExplainer] = useState(false);
 
             const handleFileUpload = (e) => {
                 const file = e.target.files[0];
@@ -448,9 +601,9 @@
                         // Track successful analysis in Amplitude
                         if (window.amplitude) {
                             amplitude.track('Resume Analysis Completed', {
-                                total_score: parsedResult.total_score,
-                                label: parsedResult.label,
-                                issue_count: parsedResult.all_issues ? parsedResult.all_issues.length : 0
+                                total_score: parsedResult.total_ats_score,
+                                semantic_score: parsedResult.semantic_analysis?.position_score,
+                                label: parsedResult.ats_label
                             });
                         }
                     } else {
@@ -458,9 +611,8 @@
                     }
                 } catch (error) {
                     console.error('Analysis error:', error);
-                    alert('Error analyzing resume. Please try again. Error: ' + error.message);
+                    alert('Error analyzing resume. Please try again.');
                     
-                    // Track error in Amplitude
                     if (window.amplitude) {
                         amplitude.track('Resume Analysis Error', {
                             error: error.message
@@ -477,15 +629,13 @@
                     return;
                 }
 
-                // Track email capture in Amplitude
                 if (window.amplitude) {
                     amplitude.track('Email Captured', {
                         email_domain: email.split('@')[1],
-                        score: result?.total_score
+                        score: result?.total_ats_score
                     });
                 }
 
-                // Track in Google Analytics
                 if (typeof gtag !== 'undefined') {
                     gtag('event', 'generate_lead', {
                         'event_category': 'ATS_Scanner',
@@ -511,11 +661,32 @@
                 return 'Needs Work';
             };
 
+            const getSemanticColor = (positionScore) => {
+                if (positionScore >= -1.5 && positionScore <= 1.5) return 'green';
+                if (Math.abs(positionScore) <= 3.5) return 'orange';
+                return 'red';
+            };
+
+            const getPositionLabel = (positionScore) => {
+                if (positionScore < -3.5) return 'Severely Under-positioned';
+                if (positionScore < -1.5) return 'Moderately Under-positioned';
+                if (positionScore < 0) return 'Slightly Under-positioned';
+                if (positionScore === 0) return 'Perfectly Positioned';
+                if (positionScore <= 1.5) return 'Slightly Over-positioned';
+                if (positionScore <= 3.5) return 'Moderately Over-positioned';
+                return 'Severely Over-positioned';
+            };
+
+            const getScalePosition = (positionScore) => {
+                // Convert from -5 to +5 to percentage 0-100
+                return ((positionScore + 5) / 10) * 100;
+            };
+
             return (
                 <div className="container">
                     <div className="header">
-                        <h1>🎯 ATS Resume Scanner V2</h1>
-                        <p>AI-powered analysis based on recruiter psychology + ATS parsing</p>
+                        <h1>🎯 ATS Resume Scanner</h1>
+                        <p>AI-powered analysis of formatting, keywords, and recruiter psychology</p>
                     </div>
 
                     <div className="card">
@@ -585,12 +756,12 @@
                             <div className="loading">
                                 <div className="spinner"></div>
                                 <p>Analyzing your resume...</p>
-                                <small>This may take 15-20 seconds</small>
                             </div>
                         )}
 
                         {result && (
                             <div className="score-display">
+                                {/* ATS Score Section */}
                                 <div className="score-circle">
                                     <svg width="200" height="200">
                                         <circle
@@ -606,27 +777,128 @@
                                             cy="100"
                                             r="90"
                                             fill="none"
-                                            stroke={result.total_score >= 90 ? '#10b981' : 
-                                                   result.total_score >= 80 ? '#3b82f6' :
-                                                   result.total_score >= 70 ? '#f59e0b' : '#ef4444'}
+                                            stroke={result.total_ats_score >= 90 ? '#10b981' : 
+                                                   result.total_ats_score >= 80 ? '#3b82f6' :
+                                                   result.total_ats_score >= 70 ? '#f59e0b' : '#ef4444'}
                                             strokeWidth="12"
-                                            strokeDasharray={`${(result.total_score / 100) * 565} 565`}
+                                            strokeDasharray={`${(result.total_ats_score / 100) * 565} 565`}
                                             strokeLinecap="round"
                                             transform="rotate(-90 100 100)"
                                         />
                                     </svg>
-                                    <div className={`score-number ${getScoreColor(result.total_score)}`}>
-                                        {result.total_score}
+                                    <div className={`score-number ${getScoreColor(result.total_ats_score)}`}>
+                                        {result.total_ats_score}
                                     </div>
                                 </div>
 
-                                <div className={`score-label ${getScoreColor(result.total_score)}`}>
-                                    {getScoreGrade(result.total_score)}
+                                <div className={`score-label ${getScoreColor(result.total_ats_score)}`}>
+                                    {getScoreGrade(result.total_ats_score)}
                                 </div>
 
-                                {result.recruiter_scan_verdict && (
-                                    <div style={{marginTop: '10px', fontSize: '14px', color: '#6b7280'}}>
-                                        {result.recruiter_scan_verdict}
+                                {/* Semantic Analysis Section */}
+                                {result.semantic_analysis && (
+                                    <div className="semantic-container">
+                                        <div className="semantic-header">
+                                            <span className="semantic-title">🎭 Semantic Positioning</span>
+                                            <span className={`semantic-badge ${getSemanticColor(result.semantic_analysis.position_score)}`}>
+                                                {getPositionLabel(result.semantic_analysis.position_score)}
+                                            </span>
+                                        </div>
+
+                                        {/* Position Scale Visual */}
+                                        <div className="position-scale">
+                                            <div className="scale-line">
+                                                <div 
+                                                    className="scale-marker"
+                                                    style={{ left: `${getScalePosition(result.semantic_analysis.position_score)}%` }}
+                                                    title={`Position: ${result.semantic_analysis.position_score}`}
+                                                ></div>
+                                            </div>
+                                            <div className="scale-labels">
+                                                <span>Under-positioned (-5)</span>
+                                                <span>Aligned (0)</span>
+                                                <span>Over-positioned (+5)</span>
+                                            </div>
+                                        </div>
+
+                                        {/* Alignment Score Bar */}
+                                        <div>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}>
+                                                <span style={{ fontSize: '14px', color: '#6b7280' }}>Alignment Score</span>
+                                                <span style={{ fontSize: '14px', fontWeight: 'bold', color: '#1a365d' }}>
+                                                    {result.semantic_analysis.alignment_score}/10
+                                                </span>
+                                            </div>
+                                            <div className="alignment-bar">
+                                                <div 
+                                                    className="alignment-fill" 
+                                                    style={{ width: `${(result.semantic_analysis.alignment_score / 10) * 100}%` }}
+                                                ></div>
+                                            </div>
+                                        </div>
+
+                                        {/* Stats Grid */}
+                                        <div className="semantic-stats">
+                                            <div className="semantic-stat">
+                                                <div className="semantic-stat-label">Position Score</div>
+                                                <div className="semantic-stat-value" style={{ 
+                                                    color: Math.abs(result.semantic_analysis.position_score) <= 1.5 ? '#10b981' :
+                                                           Math.abs(result.semantic_analysis.position_score) <= 3.5 ? '#f59e0b' : '#ef4444'
+                                                }}>
+                                                    {result.semantic_analysis.position_score > 0 ? '+' : ''}{result.semantic_analysis.position_score}
+                                                </div>
+                                            </div>
+                                            <div className="semantic-stat">
+                                                <div className="semantic-stat-label">Detected Level</div>
+                                                <div className="semantic-stat-value">{result.semantic_analysis.detected_level}</div>
+                                            </div>
+                                            <div className="semantic-stat">
+                                                <div className="semantic-stat-label">Confidence</div>
+                                                <div className="semantic-stat-value">{result.semantic_analysis.confidence}%</div>
+                                            </div>
+                                        </div>
+
+                                        {/* Explainer */}
+                                        <div className="explainer" onClick={() => setShowExplainer(!showExplainer)}>
+                                            ℹ️ How to read this score
+                                            <div className={`explainer-content ${showExplainer ? 'show' : ''}`}>
+                                                Scores range from <strong>-5.0 (under-positioned)</strong> to <strong>+5.0 (over-positioned)</strong>.<br/>
+                                                <strong>0 is perfectly aligned</strong> — your verbs match your experience level.<br/><br/>
+                                                🟢 <strong>-1.5 to +1.5:</strong> Acceptable range. Minor improvements can reach perfect alignment.<br/>
+                                                🟠 <strong>-3.5 to -1.5 or +1.5 to +3.5:</strong> Moderate adjustments needed. Recruiters may notice positioning issues.<br/>
+                                                🔴 <strong>Beyond ±3.5:</strong> Critical repositioning needed. High risk of being perceived as over or under-qualified.
+                                            </div>
+                                        </div>
+
+                                        {/* Semantic Flags */}
+                                        {result.semantic_analysis.flags && result.semantic_analysis.flags.length > 0 && (
+                                            <div style={{ marginTop: '20px' }}>
+                                                <h4 style={{ marginBottom: '10px', color: '#1a365d' }}>Semantic Flags</h4>
+                                                {result.semantic_analysis.flags.map((flag, idx) => (
+                                                    <div key={idx} className="flag-item">
+                                                        <strong>⚠️ {flag.type.replace('_', ' ').toUpperCase()}</strong>
+                                                        <div style={{ marginTop: '5px' }}>"{flag.original_text}"</div>
+                                                        <div style={{ marginTop: '5px', fontSize: '13px', color: '#ef4444' }}>{flag.issue}</div>
+                                                        <div className="flag-suggestion">
+                                                            💡 {flag.suggestion}
+                                                            {flag.example && <div style={{ marginTop: '5px', color: '#667eea' }}>{flag.example}</div>}
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+
+                                        {/* Semantic Recommendations */}
+                                        {result.semantic_analysis.recommendations && result.semantic_analysis.recommendations.length > 0 && (
+                                            <div style={{ marginTop: '20px' }}>
+                                                <h4 style={{ marginBottom: '10px', color: '#1a365d' }}>Semantic Recommendations</h4>
+                                                <ul style={{ paddingLeft: '20px' }}>
+                                                    {result.semantic_analysis.recommendations.map((rec, idx) => (
+                                                        <li key={idx} style={{ marginBottom: '8px' }}>{rec}</li>
+                                                    ))}
+                                                </ul>
+                                            </div>
+                                        )}
                                     </div>
                                 )}
 
@@ -649,16 +921,6 @@
                                                 <h3 style={{marginTop: '20px'}}>📊 Market Positioning</h3>
                                                 <p><strong>Level:</strong> {result.market_positioning.level}</p>
                                                 <p><strong>Assessment:</strong> {result.market_positioning.assessment}</p>
-                                                {result.market_positioning.recommended_roles && (
-                                                    <>
-                                                        <p><strong>Recommended Roles:</strong></p>
-                                                        <ul>
-                                                            {result.market_positioning.recommended_roles.map((role, idx) => (
-                                                                <li key={idx}>{role}</li>
-                                                            ))}
-                                                        </ul>
-                                                    </>
-                                                )}
                                             </>
                                         )}
 
@@ -674,7 +936,7 @@
                                         )}
                                     </div>
 
-                                    {/* Right Column - Role Match & Buzzwords */}
+                                    {/* Right Column - Role Match & Immediate Fixes */}
                                     <div className="results-section">
                                         {result.role_match && result.role_match.length > 0 && (
                                             <>
@@ -683,19 +945,6 @@
                                                     <div key={idx} className="role-match-item">
                                                         <span>{role.role}</span>
                                                         <span className="match-percentage">{role.match_percentage}%</span>
-                                                    </div>
-                                                ))}
-                                            </>
-                                        )}
-
-                                        {result.buzzwords_detected && result.buzzwords_detected.length > 0 && (
-                                            <>
-                                                <h3 style={{marginTop: '20px'}}>⚠️ Buzzwords Detected</h3>
-                                                {result.buzzwords_detected.map((buzzword, idx) => (
-                                                    <div key={idx} className="buzzword-item">
-                                                        <strong>"{buzzword.word}"</strong><br/>
-                                                        <small>{buzzword.context}</small><br/>
-                                                        <small style={{color: '#ef4444'}}>{buzzword.verdict}</small>
                                                     </div>
                                                 ))}
                                             </>
@@ -715,9 +964,9 @@
                                 </div>
 
                                 {/* All Issues Section - Full List */}
-                                {(result.all_issues || result.critical_weaknesses) && (
+                                {result.all_issues && result.all_issues.length > 0 && (
                                     <div className="results-section" style={{marginTop: '20px'}}>
-                                        <h3>📋 All Identified Issues ({result.all_issues ? result.all_issues.length : (result.critical_weaknesses ? result.critical_weaknesses.length : 0)})</h3>
+                                        <h3>📋 All Identified Issues ({result.all_issues.length})</h3>
                                         <table className="issues-table">
                                             <thead>
                                                 <tr>
@@ -728,7 +977,7 @@
                                                 </tr>
                                             </thead>
                                             <tbody>
-                                                {(result.all_issues || result.critical_weaknesses || []).map((issue, idx) => (
+                                                {result.all_issues.map((issue, idx) => (
                                                     <tr key={idx}>
                                                         <td className={`priority-${issue.priority ? issue.priority.toLowerCase() : 'medium'}`}>
                                                             {issue.priority || 'Medium'}
@@ -809,8 +1058,8 @@
                                         setFileName('');
                                         setEmail('');
                                         setEmailSent(false);
+                                        setShowExplainer(false);
                                         
-                                        // Track new scan in Amplitude
                                         if (window.amplitude) {
                                             amplitude.track('New Scan Started', {});
                                         }
