@@ -31,6 +31,12 @@
     <!-- Contentsquare (Hotjar) Tracking -->
     <script src="https://t.contentsquare.net/uxa/5f94e8837c5a5.js"></script>
     
+    <!-- PDF.js Library for PDF Parsing -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+    <script>
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
+    </script>
+    
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -82,6 +88,7 @@
             gap: 10px;
             margin-bottom: 30px;
             border-bottom: 2px solid #e5e7eb;
+            flex-wrap: wrap;
         }
 
         .tab {
@@ -125,6 +132,7 @@
             cursor: pointer;
             transition: all 0.3s;
             background: #f9fafb;
+            text-align: center;
         }
 
         .file-upload:hover {
@@ -139,6 +147,22 @@
         .file-upload-icon {
             font-size: 48px;
             margin-bottom: 10px;
+        }
+
+        .file-types {
+            font-size: 12px;
+            color: #6b7280;
+            margin-top: 10px;
+        }
+
+        .parse-error {
+            background: #fef2f2;
+            border: 1px solid #ef4444;
+            border-radius: 8px;
+            padding: 12px;
+            margin-top: 15px;
+            color: #ef4444;
+            font-size: 14px;
         }
 
         button {
@@ -552,6 +576,12 @@
                 flex-direction: column;
                 align-items: flex-start;
             }
+            .tabs {
+                flex-direction: column;
+            }
+            .tab {
+                text-align: center;
+            }
         }
     </style>
 </head>
@@ -569,23 +599,87 @@
             const [resumeText, setResumeText] = useState('');
             const [fileName, setFileName] = useState('');
             const [loading, setLoading] = useState(false);
+            const [parseError, setParseError] = useState(null);
             const [result, setResult] = useState(null);
             const [email, setEmail] = useState('');
             const [emailSent, setEmailSent] = useState(false);
             const [showExplainer, setShowExplainer] = useState(false);
 
-            const handleFileUpload = (e) => {
+            // Parse PDF file and extract text
+            const parsePDF = async (file) => {
+                return new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onload = async function(e) {
+                        try {
+                            const typedarray = new Uint8Array(e.target.result);
+                            const pdf = await pdfjsLib.getDocument(typedarray).promise;
+                            let fullText = '';
+                            
+                            for (let i = 1; i <= pdf.numPages; i++) {
+                                const page = await pdf.getPage(i);
+                                const textContent = await page.getTextContent();
+                                const pageText = textContent.items.map(item => item.str).join(' ');
+                                fullText += pageText + '\n';
+                            }
+                            
+                            resolve(fullText);
+                        } catch (error) {
+                            reject(new Error('Failed to parse PDF: ' + error.message));
+                        }
+                    };
+                    reader.onerror = () => reject(new Error('Failed to read file'));
+                    reader.readAsArrayBuffer(file);
+                });
+            };
+
+            const handleFileUpload = async (e) => {
                 const file = e.target.files[0];
                 if (!file) return;
 
                 setFileName(file.name);
-                const reader = new FileReader();
-                
-                reader.onload = (event) => {
-                    setResumeText(event.target.result);
-                };
-                
-                reader.readAsText(file);
+                setParseError(null);
+                setLoading(true);
+
+                try {
+                    let extractedText = '';
+                    
+                    if (file.type === 'text/plain') {
+                        const reader = new FileReader();
+                        extractedText = await new Promise((resolve, reject) => {
+                            reader.onload = (event) => resolve(event.target.result);
+                            reader.onerror = () => reject(new Error('Failed to read text file'));
+                            reader.readAsText(file);
+                        });
+                    } else if (file.type === 'application/pdf') {
+                        extractedText = await parsePDF(file);
+                    } else {
+                        setParseError('Unsupported file type. Please upload .txt or .pdf files.');
+                        setLoading(false);
+                        return;
+                    }
+                    
+                    if (!extractedText || extractedText.trim().length < 50) {
+                        setParseError('Could not extract enough text from the file. Please ensure the file contains readable text.');
+                        setLoading(false);
+                        return;
+                    }
+                    
+                    setResumeText(extractedText);
+                    
+                    if (window.amplitude) {
+                        amplitude.track('File Uploaded', {
+                            file_type: file.type,
+                            file_size: file.size,
+                            text_length: extractedText.length
+                        });
+                    }
+                    
+                } catch (error) {
+                    console.error('File parse error:', error);
+                    setParseError(error.message || 'Failed to parse file. Please try pasting the text instead.');
+                } finally {
+                    setLoading(false);
+                }
             };
 
             const analyzeResume = async () => {
@@ -596,11 +690,13 @@
 
                 setLoading(true);
                 setResult(null);
+                setParseError(null);
 
                 if (window.amplitude) {
                     amplitude.track('Resume Analysis Started', {
                         source: activeTab,
-                        timestamp: new Date().toISOString()
+                        timestamp: new Date().toISOString(),
+                        text_length: resumeText.length
                     });
                 }
 
@@ -708,12 +804,6 @@
                 return ((positionScore + 5) / 10) * 100;
             };
 
-            const getAlignmentScoreColor = (score) => {
-                if (score >= 8) return 'green';
-                if (score >= 5) return 'orange';
-                return 'red';
-            };
-
             const getRoleMatchDisclaimer = (roleMatches, atsScore, positionScore) => {
                 if (!roleMatches || roleMatches.length === 0) return null;
                 
@@ -795,7 +885,7 @@
                                         className={`tab ${activeTab === 'upload' ? 'active' : ''}`}
                                         onClick={() => setActiveTab('upload')}
                                     >
-                                        📄 Upload File
+                                        📄 Upload File (.txt, .pdf)
                                     </button>
                                 </div>
 
@@ -817,7 +907,7 @@
                                         <label className="file-upload">
                                             <input 
                                                 type="file" 
-                                                accept=".txt"
+                                                accept=".txt,.pdf"
                                                 onChange={handleFileUpload}
                                             />
                                             <div className="file-upload-icon">📁</div>
@@ -826,15 +916,30 @@
                                                     <strong>{fileName}</strong>
                                                 ) : (
                                                     <>
-                                                        <strong>Click to upload</strong> or drag and drop<br/>
-                                                        <small>Supports .txt files</small>
+                                                        <strong>Click to upload</strong> or drag and drop
                                                     </>
                                                 )}
                                             </div>
+                                            <div className="file-types">
+                                                Supports .txt and .pdf files
+                                            </div>
                                         </label>
+                                        
+                                        {parseError && (
+                                            <div className="parse-error">
+                                                ⚠️ {parseError}
+                                            </div>
+                                        )}
+                                        
+                                        {resumeText && !parseError && (
+                                            <div style={{ marginTop: '20px', padding: '12px', background: '#ecfdf5', borderRadius: '8px', color: '#065f46' }}>
+                                                ✅ File loaded successfully. {resumeText.length} characters extracted.
+                                            </div>
+                                        )}
+                                        
                                         <button 
                                             onClick={analyzeResume}
-                                            disabled={!resumeText}
+                                            disabled={!resumeText || loading}
                                             style={{marginTop: '20px'}}
                                         >
                                             Analyze My Resume
@@ -1172,6 +1277,7 @@
                                         setEmail('');
                                         setEmailSent(false);
                                         setShowExplainer(false);
+                                        setParseError(null);
                                         
                                         if (window.amplitude) {
                                             amplitude.track('New Scan Started', {});
