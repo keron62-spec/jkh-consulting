@@ -662,7 +662,9 @@
     <script type="text/babel">
         const { useState } = React;
 
-        const WORKER_URL = "https://ats-proxy.keron62.workers.dev";
+        // DUAL WORKER ROUTING - V7.1
+        const STANDARD_WORKER_URL = "https://ats-resume-only.keron62.workers.dev";
+        const COMPARE_WORKER_URL = "https://ats-proxy.keron62.workers.dev";
 
         function ATSScanner() {
             const [isComparisonMode, setIsComparisonMode] = useState(false);
@@ -798,11 +800,14 @@
                 }
 
                 try {
+                    // Select the correct Worker based on mode
+                    const workerUrl = isComparisonMode ? COMPARE_WORKER_URL : STANDARD_WORKER_URL;
+                    
                     const payload = isComparisonMode 
                         ? { resumeText: resumeText, jobDescriptionText: jobDescriptionText }
                         : { resumeText: resumeText };
                     
-                    const response = await fetch(WORKER_URL, {
+                    const response = await fetch(workerUrl, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify(payload)
@@ -1483,8 +1488,12 @@
                                                 <tr><td>Skills Section</td><td>{result.breakdown.skills_section || 0}</td><td>10</td></tr>
                                                 <tr><td>Length & Brevity</td><td>{result.breakdown.length_brevity || 0}</td><td>5</td></tr>
                                                 <tr><td>Publications & Projects</td><td>{result.breakdown.publications_projects || 0}</td><td>5</td></tr>
-                                                {result.breakdown.recruiter_scan_penalty !== undefined && (<tr><td>Recruiter Scan Penalty</td><td>{result.breakdown.recruiter_scan_penalty}</td><td>0</td></tr>)}
-                                                {result.breakdown.buzzword_repetition_penalty !== undefined && (<tr><td>Buzzword/Repetition Penalty</td><td>{result.breakdown.buzzword_repetition_penalty}</td><td>0</td></tr>)}
+                                                {result.breakdown.recruiter_scan_penalty !== undefined && (
+                                                    <tr><td>Recruiter Scan Penalty</td><td>{result.breakdown.recruiter_scan_penalty}</td><td>0</td></tr>
+                                                )}
+                                                {result.breakdown.buzzword_repetition_penalty !== undefined && (
+                                                    <tr><td>Buzzword/Repetition Penalty</td><td>{result.breakdown.buzzword_repetition_penalty}</td><td>0</td></tr>
+                                                )}
                                             </tbody>
                                         </table>
                                     </div>
