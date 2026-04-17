@@ -255,9 +255,9 @@
         /* Score Cards */
         .score-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
             gap: 20px;
-            margin-bottom: 30px;
+            margin-bottom: 20px;
         }
 
         .score-card {
@@ -297,38 +297,55 @@
         .risk-medium { background: #fed7aa; color: #9b2c1d; }
         .risk-high { background: #fee2e2; color: #991b1b; }
 
-        /* ATS Score Circle */
-        .score-circle-container {
-            text-align: center;
-            margin-bottom: 30px;
-        }
-
-        .score-circle {
-            width: 180px;
-            height: 180px;
-            margin: 0 auto;
-            position: relative;
-        }
-
-        .score-number {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            font-size: 48px;
-            font-weight: bold;
-        }
-
-        .score-label-large {
-            font-size: 20px;
-            font-weight: 600;
+        .risk-full-width {
             margin-top: 10px;
+            text-align: center;
         }
 
-        .score-excellent { color: #10b981; }
-        .score-good { color: #3b82f6; }
-        .score-moderate { color: #f59e0b; }
-        .score-poor { color: #ef4444; }
+        /* PDF Health Critical Section */
+        .pdf-health-critical {
+            background: #fef2f2;
+            border: 2px solid #ef4444;
+            border-radius: 16px;
+            padding: 24px;
+            margin: 20px 0;
+        }
+
+        .pdf-health-critical h3 {
+            color: #991b1b;
+            margin-bottom: 12px;
+        }
+
+        .pdf-health-good {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 16px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+
+        .pdf-issue {
+            padding: 12px;
+            margin: 10px 0;
+            border-radius: 8px;
+            background: white;
+        }
+
+        .pdf-issue-header {
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+
+        .pdf-issue-message {
+            font-size: 13px;
+            color: #4b5563;
+            margin-bottom: 5px;
+        }
+
+        .pdf-issue-fix {
+            font-size: 12px;
+            color: #10b981;
+        }
 
         /* Credibility Container */
         .credibility-container {
@@ -673,16 +690,9 @@
             color: #92400e;
         }
 
-        /* V8 New Section Styles */
+        /* V8 Section Styles */
         .v8-section {
             margin-top: 20px;
-        }
-
-        .v8-section h3 {
-            color: #1a365d;
-            margin-bottom: 15px;
-            border-bottom: 2px solid #667eea;
-            padding-bottom: 8px;
         }
 
         .bloom-stats {
@@ -710,27 +720,7 @@
             color: #1a365d;
         }
 
-        .bullets-by-level {
-            margin-top: 10px;
-        }
-
-        .level-badge {
-            display: inline-block;
-            padding: 2px 8px;
-            border-radius: 12px;
-            font-size: 10px;
-            font-weight: 600;
-            margin-right: 8px;
-        }
-
-        .level-1 { background: #f3f4f6; color: #374151; }
-        .level-2 { background: #e5e7eb; color: #374151; }
-        .level-3 { background: #d1fae5; color: #065f46; }
-        .level-4 { background: #fed7aa; color: #9b2c1d; }
-        .level-5 { background: #fee2e2; color: #991b1b; }
-        .level-6 { background: #fef3c7; color: #92400e; }
-
-        .grammar-item, .missing-tool-item, .rewrite-item {
+        .grammar-item, .missing-tool-item, .rewrite-item, .weak-metric-item {
             background: white;
             padding: 12px;
             margin: 10px 0;
@@ -738,25 +728,11 @@
             border-left: 4px solid #667eea;
         }
 
-        .grammar-item .error-type {
+        .error-type {
             font-size: 11px;
             font-weight: 600;
             text-transform: uppercase;
             margin-bottom: 5px;
-        }
-
-        .grammar-item .original {
-            font-family: monospace;
-            font-size: 12px;
-            background: #f3f4f6;
-            padding: 4px 8px;
-            border-radius: 4px;
-            margin: 5px 0;
-        }
-
-        .grammar-item .suggestion {
-            color: #10b981;
-            margin-top: 5px;
         }
 
         .industry-badge {
@@ -787,9 +763,9 @@
     <script type="text/babel">
         const { useState } = React;
 
-        // DUAL WORKER ROUTING - V8
+        // DUAL WORKER ROUTING - V8.1
         const STANDARD_WORKER_URL = "https://ats-resume-only.keron62.workers.dev";
-        const COMPARE_WORKER_URL = "https://ats-proxy.keron62.workers.dev";
+        const COMPARE_WORKER_URL = "https://ats-compare-proxy.keron62.workers.dev";
 
         function ATSScanner() {
             const [isComparisonMode, setIsComparisonMode] = useState(false);
@@ -798,6 +774,7 @@
             const [resumeText, setResumeText] = useState('');
             const [resumeFileName, setResumeFileName] = useState('');
             const [resumeParseError, setResumeParseError] = useState(null);
+            const [resumePdfHealth, setResumePdfHealth] = useState(null);
             
             // Job Description state (only used in comparison mode)
             const [jobDescriptionText, setJobDescriptionText] = useState('');
@@ -813,6 +790,133 @@
             const [showPositionExplainer, setShowPositionExplainer] = useState(false);
             const [showCredibilityShortExplainer, setShowCredibilityShortExplainer] = useState(false);
 
+            // ============================================================
+            // PDF HEALTH ANALYSIS (V8.1 NEW)
+            // ============================================================
+            
+            const analyzePDFHealth = async (pdf, fileSize) => {
+                const metadata = await pdf.getMetadata();
+                const numPages = pdf.numPages;
+                const issues = [];
+                
+                // Get first page for layout analysis
+                const page = await pdf.getPage(1);
+                const viewport = page.getViewport({ scale: 1 });
+                const textContent = await page.getTextContent();
+                
+                // Extract text items with positions
+                const textItems = textContent.items.map(item => ({
+                    text: item.str,
+                    x: item.transform[4],
+                    y: item.transform[5],
+                    width: item.width,
+                    height: item.height,
+                    fontName: item.fontName,
+                    fontSize: item.fontSize
+                }));
+                
+                // Detect multi-column (Y-position clustering)
+                const yPositions = textItems.map(item => Math.round(item.y));
+                const uniqueY = [...new Set(yPositions)];
+                const yGaps = [];
+                for (let i = 1; i < uniqueY.length; i++) {
+                    yGaps.push(uniqueY[i] - uniqueY[i-1]);
+                }
+                const avgYGap = yGaps.length > 0 ? yGaps.reduce((a,b) => a+b, 0) / yGaps.length : 0;
+                const isMultiColumn = avgYGap > 50 && textItems.length > 20;
+                
+                // Detect header (text at top of page)
+                const headerItems = textItems.filter(item => item.y < 100);
+                const hasHeaders = headerItems.length > 0;
+                
+                // Detect footer (text at bottom of page)
+                const footerItems = textItems.filter(item => item.y > viewport.height - 100);
+                const hasFooters = footerItems.length > 0;
+                
+                // Resume builder detection
+                const creator = metadata.info?.Creator || '';
+                const producer = metadata.info?.Producer || '';
+                const isResumeBuilder = /Canva|Novoresume|Zety|Resume\.io|EnhanCV|CVMaker|Wix|Adobe Illustrator/i.test(creator + producer);
+                
+                // Scanned PDF detection (text length vs file size)
+                const totalTextLength = textContent.items.map(i => i.str).join('').length;
+                const isScanned = totalTextLength < 200 && fileSize > 200000;
+                
+                // Page count warning
+                if (numPages > 2) {
+                    issues.push({
+                        type: "page_count",
+                        severity: "low",
+                        message: `${numPages} pages detected`,
+                        fix: "Consider condensing to 2 pages for better impact"
+                    });
+                }
+                
+                // Multi-column detection
+                if (isMultiColumn) {
+                    issues.push({
+                        type: "multi_column",
+                        severity: "high",
+                        message: "Multi-column layout detected",
+                        fix: "Reformat your resume to a single column for ATS compatibility"
+                    });
+                }
+                
+                // Header/footer detection
+                if (hasHeaders) {
+                    issues.push({
+                        type: "header_footer",
+                        severity: "medium",
+                        message: "Text detected in header area",
+                        fix: "Move contact information to the body of your resume"
+                    });
+                }
+                
+                // Resume builder detection
+                if (isResumeBuilder) {
+                    issues.push({
+                        type: "resume_builder",
+                        severity: "medium",
+                        message: `Generated by ${creator || producer || "unknown resume builder"}`,
+                        fix: "Export as plain text or use Microsoft Word for ATS-friendly PDFs"
+                    });
+                }
+                
+                // Scanned PDF detection
+                if (isScanned) {
+                    issues.push({
+                        type: "scanned_pdf",
+                        severity: "high",
+                        message: "No selectable text found - appears to be a scanned image",
+                        fix: "Use OCR to extract text or recreate as a text-based PDF"
+                    });
+                }
+                
+                // Microsoft Word bonus (good)
+                if (creator.includes("Microsoft Word") || producer.includes("Microsoft Word")) {
+                    issues.push({
+                        type: "word_pdf",
+                        severity: "good",
+                        message: "Generated by Microsoft Word",
+                        fix: "No action needed - Word PDFs are ATS-friendly"
+                    });
+                }
+                
+                return {
+                    pageCount: numPages,
+                    creator: creator,
+                    producer: producer,
+                    isMultiColumn: isMultiColumn,
+                    hasHeaders: hasHeaders,
+                    hasFooters: hasFooters,
+                    isScanned: isScanned,
+                    isResumeBuilder: isResumeBuilder,
+                    issues: issues,
+                    textLength: totalTextLength,
+                    fileSize: fileSize
+                };
+            };
+
             const parsePDF = async (file) => {
                 return new Promise((resolve, reject) => {
                     const reader = new FileReader();
@@ -820,6 +924,8 @@
                         try {
                             const typedarray = new Uint8Array(e.target.result);
                             const pdf = await pdfjsLib.getDocument(typedarray).promise;
+                            
+                            // Extract text
                             let fullText = '';
                             for (let i = 1; i <= pdf.numPages; i++) {
                                 const page = await pdf.getPage(i);
@@ -827,7 +933,8 @@
                                 const pageText = textContent.items.map(item => item.str).join(' ');
                                 fullText += pageText + '\n';
                             }
-                            resolve(fullText);
+                            
+                            resolve({ pdf, fullText });
                         } catch (error) {
                             reject(new Error('Failed to parse PDF: ' + error.message));
                         }
@@ -843,9 +950,12 @@
 
                 setResumeFileName(file.name);
                 setResumeParseError(null);
+                setLoading(true);
                 
                 try {
                     let extractedText = '';
+                    let pdfHealth = null;
+                    
                     if (file.type === 'text/plain') {
                         const reader = new FileReader();
                         extractedText = await new Promise((resolve, reject) => {
@@ -854,20 +964,37 @@
                             reader.readAsText(file);
                         });
                     } else if (file.type === 'application/pdf') {
-                        extractedText = await parsePDF(file);
+                        const { pdf, fullText } = await parsePDF(file);
+                        extractedText = fullText;
+                        pdfHealth = await analyzePDFHealth(pdf, file.size);
                     } else {
                         setResumeParseError('Unsupported file type. Please upload .txt or .pdf');
+                        setLoading(false);
                         return;
                     }
                     
                     if (!extractedText || extractedText.trim().length < 50) {
                         setResumeParseError('Could not extract enough text from the file.');
+                        setLoading(false);
                         return;
                     }
                     
                     setResumeText(extractedText);
+                    setResumePdfHealth(pdfHealth);
+                    
+                    if (window.amplitude) {
+                        amplitude.track('File Uploaded', {
+                            file_type: file.type,
+                            file_size: file.size,
+                            text_length: extractedText.length,
+                            pdf_issues: pdfHealth ? pdfHealth.issues.length : 0
+                        });
+                    }
+                    
                 } catch (error) {
                     setResumeParseError(error.message);
+                } finally {
+                    setLoading(false);
                 }
             };
 
@@ -877,6 +1004,7 @@
 
                 setJobDescriptionFileName(file.name);
                 setJobDescriptionParseError(null);
+                setLoading(true);
                 
                 try {
                     let extractedText = '';
@@ -888,20 +1016,25 @@
                             reader.readAsText(file);
                         });
                     } else if (file.type === 'application/pdf') {
-                        extractedText = await parsePDF(file);
+                        const { fullText } = await parsePDF(file);
+                        extractedText = fullText;
                     } else {
                         setJobDescriptionParseError('Unsupported file type. Please upload .txt or .pdf');
+                        setLoading(false);
                         return;
                     }
                     
                     if (!extractedText || extractedText.trim().length < 50) {
                         setJobDescriptionParseError('Could not extract enough text from the file.');
+                        setLoading(false);
                         return;
                     }
                     
                     setJobDescriptionText(extractedText);
                 } catch (error) {
                     setJobDescriptionParseError(error.message);
+                } finally {
+                    setLoading(false);
                 }
             };
 
@@ -927,12 +1060,19 @@
                 }
 
                 try {
-                    // Select the correct Worker based on mode
                     const workerUrl = isComparisonMode ? COMPARE_WORKER_URL : STANDARD_WORKER_URL;
                     
+                    // Include PDF health data if available
                     const payload = isComparisonMode 
-                        ? { resumeText: resumeText, jobDescriptionText: jobDescriptionText }
-                        : { resumeText: resumeText };
+                        ? { 
+                            resumeText: resumeText,
+                            resumePdfHealth: resumePdfHealth,
+                            jobDescriptionText: jobDescriptionText 
+                          }
+                        : { 
+                            resumeText: resumeText,
+                            resumePdfHealth: resumePdfHealth
+                          };
                     
                     const response = await fetch(workerUrl, {
                         method: 'POST',
@@ -950,6 +1090,10 @@
                         let jsonText = data.candidates[0].content.parts[0].text.trim();
                         jsonText = jsonText.replace(/```json\n?/g, '').replace(/```\n?/g, '');
                         const parsedResult = JSON.parse(jsonText);
+                        
+                        // Attach PDF health to result
+                        parsedResult.pdf_health = resumePdfHealth;
+                        
                         setResult(parsedResult);
                         
                         if (window.amplitude) {
@@ -1106,6 +1250,79 @@
                 return null;
             };
 
+            // Determine if PDF health is critical (score < 70)
+            // Note: The actual PDF health score comes from Gemini analysis
+            // For now, we estimate based on issues severity
+            const getPdfHealthScore = () => {
+                if (!result?.pdf_health?.issues) return null;
+                const issues = result.pdf_health.issues;
+                let score = 100;
+                for (const issue of issues) {
+                    if (issue.severity === 'high') score -= 15;
+                    else if (issue.severity === 'medium') score -= 8;
+                    else if (issue.severity === 'low') score -= 3;
+                    else if (issue.severity === 'good') score += 5;
+                }
+                return Math.max(0, Math.min(100, score));
+            };
+
+            const isPdfHealthCritical = () => {
+                const score = getPdfHealthScore();
+                return score !== null && score < 70;
+            };
+
+            const getPdfHealthLabel = () => {
+                const score = getPdfHealthScore();
+                if (score === null) return null;
+                if (score >= 90) return 'Excellent';
+                if (score >= 80) return 'Good';
+                if (score >= 70) return 'Moderate';
+                if (score >= 60) return 'Poor';
+                return 'Critical';
+            };
+
+            const getPdfHealthColor = () => {
+                const score = getPdfHealthScore();
+                if (score === null) return '#6b7280';
+                if (score >= 80) return '#10b981';
+                if (score >= 70) return '#f59e0b';
+                return '#ef4444';
+            };
+
+            // Render PDF Health Section (used in both top and bottom placements)
+            const renderPdfHealthSection = (isCritical) => {
+                if (!result?.pdf_health?.issues || result.pdf_health.issues.length === 0) return null;
+                
+                const score = getPdfHealthScore();
+                const label = getPdfHealthLabel();
+                const color = getPdfHealthColor();
+                
+                const containerClass = isCritical ? 'pdf-health-critical' : 'pdf-health-good';
+                
+                return (
+                    <div className={containerClass}>
+                        <h3>{isCritical ? '⚠️ CRITICAL PDF HEALTH ISSUES' : '📄 PDF Health Report'}</h3>
+                        <p style={{ marginBottom: '15px' }}>
+                            <strong>Score: {score}/100 ({label})</strong>
+                            {isCritical && ' — Fix these issues before submitting your resume.'}
+                        </p>
+                        {result.pdf_health.issues.map((issue, idx) => {
+                            let icon = '🟡';
+                            if (issue.severity === 'high') icon = '🔴';
+                            else if (issue.severity === 'low') icon = '🟢';
+                            else if (issue.severity === 'good') icon = '✅';
+                            
+                            return (
+                                <div key={idx} className="pdf-issue">
+                                    <div className="pdf-issue-header">{icon} {issue.message}</div>
+                                    <div className="pdf-issue-message">{issue.fix}</div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                );
+            };
+
             return (
                 <div className="container">
                     <div className="header">
@@ -1253,15 +1470,26 @@
                                     </div>
                                 )}
 
-                                {/* Score Grid */}
+                                {/* Score Grid - Always at top */}
                                 <div className="score-grid">
                                     <div className="score-card">
                                         <h4>ATS Score</h4>
                                         <div className="score-value" style={{ color: result.total_ats_score >= 90 ? '#10b981' : result.total_ats_score >= 80 ? '#3b82f6' : result.total_ats_score >= 70 ? '#f59e0b' : '#ef4444' }}>
                                             {result.total_ats_score}
                                         </div>
-                                        <div className="score-label">/100</div>
+                                        <div className="score-label">/100 ({getScoreGrade(result.total_ats_score)})</div>
                                     </div>
+
+                                    {/* PDF Health Score Card - Always in grid */}
+                                    {result.pdf_health && result.pdf_health.issues && (
+                                        <div className="score-card">
+                                            <h4>📄 PDF Health Score</h4>
+                                            <div className="score-value" style={{ color: getPdfHealthColor() }}>
+                                                {getPdfHealthScore()}
+                                            </div>
+                                            <div className="score-label">/100 ({getPdfHealthLabel()})</div>
+                                        </div>
+                                    )}
 
                                     {result.fit_score !== null && (
                                         <div className="score-card">
@@ -1286,6 +1514,9 @@
                                         </div>
                                     </div>
                                 </div>
+
+                                {/* Conditional PDF Health Report - CRITICAL (score < 70) goes here (top) */}
+                                {isPdfHealthCritical() && renderPdfHealthSection(true)}
 
                                 {/* Credibility Score Section */}
                                 {result.credibility_score !== undefined && (
@@ -1417,7 +1648,7 @@
                                             )}
                                         </div>
 
-                                        {/* Semantic Stats Grid - FIXED for V8 */}
+                                        {/* Semantic Stats Grid */}
                                         <div className="semantic-stats">
                                             <div className="semantic-stat">
                                                 <div className="semantic-stat-label">Position Score</div>
@@ -1466,7 +1697,7 @@
                                             </div>
                                         </div>
 
-                                        {/* Short Position Score Explainer - V8 NEW */}
+                                        {/* Short Position Score Explainer - UPDATED with Alignment Score explanation */}
                                         <div className="explainer" onClick={() => setShowPositionExplainer(!showPositionExplainer)}>
                                             ℹ️ How to read this score (Click here)
                                             <div className={`explainer-content ${showPositionExplainer ? 'show' : ''}`}>
@@ -1482,7 +1713,15 @@
                                                 • -3.5 to -1.5 → ⚠️ You sound junior (under-positioned)<br/>
                                                 • +1.5 to +3.5 → ⚠️ You sound senior (over-positioned)<br/>
                                                 • Beyond ±3.5 → 🔴 Critical mismatch<br/><br/>
-                                                0 is the goal — perfectly positioned for your level.
+                                                0 is the goal — perfectly positioned for your level.<br/><br/>
+                                                <strong>ALIGNMENT SCORE (1-10)</strong><br/>
+                                                Measures how well your resume language matches your experience level.<br/><br/>
+                                                • 9-10: Excellent — perfectly aligned<br/>
+                                                • 7-8: Good — minor adjustments may help<br/>
+                                                • 5-6: Fair — moderate adjustments recommended<br/>
+                                                • 3-4: Poor — significant changes needed<br/>
+                                                • 1-2: Critical — major repositioning required<br/><br/>
+                                                Think of this as a confidence score for your positioning. A high alignment score means your verbs, titles, and achievements consistently match your level.
                                             </div>
                                         </div>
 
@@ -1514,7 +1753,7 @@
                                     </div>
                                 )}
 
-                                {/* V8 NEW: Bloom Analysis Section */}
+                                {/* V8 Sections: Bloom, Grammar, Missing Tools, Weak Metrics, Suggested Rewrites */}
                                 {result.bloom_analysis && (
                                     <div className="v8-section">
                                         <div className="results-section">
@@ -1568,7 +1807,6 @@
                                     </div>
                                 )}
 
-                                {/* V8 NEW: Grammar Issues Section */}
                                 {result.grammar_issues && result.grammar_issues.length > 0 && (
                                     <div className="v8-section">
                                         <div className="results-section">
@@ -1587,7 +1825,6 @@
                                     </div>
                                 )}
 
-                                {/* V8 NEW: Missing Tools Section */}
                                 {result.missing_tools && result.missing_tools.length > 0 && (
                                     <div className="v8-section">
                                         <div className="results-section">
@@ -1602,13 +1839,12 @@
                                     </div>
                                 )}
 
-                                {/* V8 NEW: Per-Metric Quality Details (Expandable) */}
                                 {result.weak_metrics_details && result.weak_metrics_details.length > 0 && (
                                     <div className="v8-section">
                                         <div className="results-section">
                                             <h3>📊 Weak Metrics - Need Improvement</h3>
                                             {result.weak_metrics_details.map((metric, idx) => (
-                                                <div key={idx} className="grammar-item" style={{ borderLeftColor: '#ef4444' }}>
+                                                <div key={idx} className="weak-metric-item" style={{ borderLeftColor: '#ef4444' }}>
                                                     <div className="original">"{metric.bullet_text}"</div>
                                                     <div style={{ fontSize: '12px', marginTop: '5px' }}>❌ {metric.reason}</div>
                                                     <div className="suggestion">✅ {metric.fix}</div>
@@ -1618,7 +1854,6 @@
                                     </div>
                                 )}
 
-                                {/* V8 NEW: Suggested Rewrites */}
                                 {result.suggested_rewrites && result.suggested_rewrites.length > 0 && (
                                     <div className="v8-section">
                                         <div className="results-section">
@@ -1760,6 +1995,9 @@
                                     </div>
                                 )}
 
+                                {/* Conditional PDF Health Report - GOOD (score ≥ 70) goes here (bottom, after Metric Quality) */}
+                                {!isPdfHealthCritical() && renderPdfHealthSection(false)}
+
                                 {/* Score Breakdown Table */}
                                 {result.breakdown && (
                                     <div className="results-section" style={{ marginTop: '20px' }}>
@@ -1800,6 +2038,7 @@
                                         setResumeText('');
                                         setResumeFileName('');
                                         setResumeParseError(null);
+                                        setResumePdfHealth(null);
                                         setJobDescriptionText('');
                                         setJobDescriptionFileName('');
                                         setJobDescriptionParseError(null);
