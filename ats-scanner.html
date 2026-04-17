@@ -248,6 +248,12 @@
             100% { transform: rotate(360deg); }
         }
 
+        .loading-stage {
+            margin-top: 15px;
+            font-size: 14px;
+            color: #6b7280;
+        }
+
         .results-container {
             margin-top: 30px;
         }
@@ -331,6 +337,16 @@
             background: white;
         }
 
+        .pdf-issue.high {
+            border-left: 4px solid #ef4444;
+        }
+        .pdf-issue.medium {
+            border-left: 4px solid #f59e0b;
+        }
+        .pdf-issue.low {
+            border-left: 4px solid #3b82f6;
+        }
+
         .pdf-issue-header {
             font-weight: 600;
             margin-bottom: 5px;
@@ -345,6 +361,47 @@
         .pdf-issue-fix {
             font-size: 12px;
             color: #10b981;
+        }
+
+        /* Upgrade Prompt */
+        .upgrade-prompt {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 16px;
+            padding: 24px;
+            margin-top: 24px;
+            text-align: center;
+            color: white;
+        }
+
+        .upgrade-prompt h3 {
+            margin-bottom: 8px;
+        }
+
+        .upgrade-buttons {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+            margin-top: 16px;
+        }
+
+        .upgrade-btn-primary {
+            background: white;
+            color: #667eea;
+            border: none;
+            padding: 10px 24px;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .upgrade-btn-secondary {
+            background: transparent;
+            color: white;
+            border: 1px solid white;
+            padding: 10px 24px;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
         }
 
         /* Credibility Container */
@@ -754,6 +811,7 @@
             .score-grid { grid-template-columns: repeat(2, 1fr); }
             .semantic-stats { grid-template-columns: repeat(2, 1fr); }
             .bloom-stats { grid-template-columns: repeat(2, 1fr); }
+            .upgrade-buttons { flex-direction: column; }
         }
     </style>
 </head>
@@ -761,26 +819,43 @@
     <div id="root"></div>
 
     <script type="text/babel">
-        const { useState } = React;
+        const { useState, useEffect } = React;
 
-        // DUAL WORKER ROUTING - V8.1
-        const STANDARD_WORKER_URL = "https://ats-resume-only.keron62.workers.dev";
-        const COMPARE_WORKER_URL = "https://ats-proxy.keron62.workers.dev";
+        // ============================================================
+        // ENVIRONMENT-SPECIFIC CONFIG (V8.1.1 NEW)
+        // ============================================================
+        const getWorkerUrls = () => {
+            const isStaging = window.location.hostname.includes('staging') || 
+                              window.location.hostname.includes('localhost') ||
+                              window.location.hostname.includes('127.0.0.1');
+            
+            if (isStaging) {
+                return {
+                    standard: 'https://ats-resume-only-staging.keron62.workers.dev',
+                    compare: 'https://ats-compare-proxy-staging.keron62.workers.dev'
+                };
+            }
+            
+            return {
+                standard: 'https://ats-resume-only.keron62.workers.dev',
+                compare: 'https://ats-compare-proxy.keron62.workers.dev'
+            };
+        };
+
+        const WORKER_URLS = getWorkerUrls();
+        const STANDARD_WORKER_URL = WORKER_URLS.standard;
+        const COMPARE_WORKER_URL = WORKER_URLS.compare;
 
         function ATSScanner() {
+            // Core state
             const [isComparisonMode, setIsComparisonMode] = useState(false);
-            
-            // Resume state
             const [resumeText, setResumeText] = useState('');
             const [resumeFileName, setResumeFileName] = useState('');
             const [resumeParseError, setResumeParseError] = useState(null);
             const [resumePdfHealth, setResumePdfHealth] = useState(null);
-            
-            // Job Description state (only used in comparison mode)
             const [jobDescriptionText, setJobDescriptionText] = useState('');
             const [jobDescriptionFileName, setJobDescriptionFileName] = useState('');
             const [jobDescriptionParseError, setJobDescriptionParseError] = useState(null);
-            
             const [loading, setLoading] = useState(false);
             const [result, setResult] = useState(null);
             const [email, setEmail] = useState('');
@@ -789,135 +864,134 @@
             const [showSemanticExplainer, setShowSemanticExplainer] = useState(false);
             const [showPositionExplainer, setShowPositionExplainer] = useState(false);
             const [showCredibilityShortExplainer, setShowCredibilityShortExplainer] = useState(false);
+            
+            // V8.1.1 NEW STATE
+            const [lastAnalysisTime, setLastAnalysisTime] = useState(0);
+            const [analysisStage, setAnalysisStage] = useState('');
+            const [scanCount, setScanCount] = useState(0);
+            const [showUpgradePrompt, setShowUpgradePrompt] = useState(false);
+
+            // Load scan count from localStorage on mount
+            useEffect(() => {
+                const savedCount = localStorage.getItem('veritas_scan_count');
+                if (savedCount) {
+                    setScanCount(parseInt(savedCount) || 0);
+                }
+            }, []);
 
             // ============================================================
-            // PDF HEALTH ANALYSIS (V8.1 NEW)
+            // PDF HEALTH ENHANCEMENT FUNCTIONS (V8.1.1 NEW)
             // ============================================================
             
-            const analyzePDFHealth = async (pdf, fileSize) => {
-                const metadata = await pdf.getMetadata();
-                const numPages = pdf.numPages;
-                const issues = [];
+            const detectResumeBuilder = (metadata) => {
+                const creator = metadata?.info?.Creator || '';
+                const producer = metadata?.info?.Producer || '';
                 
-                // Get first page for layout analysis
-                const page = await pdf.getPage(1);
-                const viewport = page.getViewport({ scale: 1 });
-                const textContent = await page.getTextContent();
-                
-                // Extract text items with positions
-                const textItems = textContent.items.map(item => ({
-                    text: item.str,
-                    x: item.transform[4],
-                    y: item.transform[5],
-                    width: item.width,
-                    height: item.height,
-                    fontName: item.fontName,
-                    fontSize: item.fontSize
-                }));
-                
-                // Detect multi-column (Y-position clustering)
-                const yPositions = textItems.map(item => Math.round(item.y));
-                const uniqueY = [...new Set(yPositions)];
-                const yGaps = [];
-                for (let i = 1; i < uniqueY.length; i++) {
-                    yGaps.push(uniqueY[i] - uniqueY[i-1]);
-                }
-                const avgYGap = yGaps.length > 0 ? yGaps.reduce((a,b) => a+b, 0) / yGaps.length : 0;
-                const isMultiColumn = avgYGap > 50 && textItems.length > 20;
-                
-                // Detect header (text at top of page)
-                const headerItems = textItems.filter(item => item.y < 100);
-                const hasHeaders = headerItems.length > 0;
-                
-                // Detect footer (text at bottom of page)
-                const footerItems = textItems.filter(item => item.y > viewport.height - 100);
-                const hasFooters = footerItems.length > 0;
-                
-                // Resume builder detection
-                const creator = metadata.info?.Creator || '';
-                const producer = metadata.info?.Producer || '';
-                const isResumeBuilder = /Canva|Novoresume|Zety|Resume\.io|EnhanCV|CVMaker|Wix|Adobe Illustrator/i.test(creator + producer);
-                
-                // Scanned PDF detection (text length vs file size)
-                const totalTextLength = textContent.items.map(i => i.str).join('').length;
-                const isScanned = totalTextLength < 200 && fileSize > 200000;
-                
-                // Page count warning
-                if (numPages > 2) {
-                    issues.push({
-                        type: "page_count",
-                        severity: "low",
-                        message: `${numPages} pages detected`,
-                        fix: "Consider condensing to 2 pages for better impact"
-                    });
-                }
-                
-                // Multi-column detection
-                if (isMultiColumn) {
-                    issues.push({
-                        type: "multi_column",
-                        severity: "high",
-                        message: "Multi-column layout detected",
-                        fix: "Reformat your resume to a single column for ATS compatibility"
-                    });
-                }
-                
-                // Header/footer detection
-                if (hasHeaders) {
-                    issues.push({
-                        type: "header_footer",
-                        severity: "medium",
-                        message: "Text detected in header area",
-                        fix: "Move contact information to the body of your resume"
-                    });
-                }
-                
-                // Resume builder detection
-                if (isResumeBuilder) {
-                    issues.push({
-                        type: "resume_builder",
-                        severity: "medium",
-                        message: `Generated by ${creator || producer || "unknown resume builder"}`,
-                        fix: "Export as plain text or use Microsoft Word for ATS-friendly PDFs"
-                    });
-                }
-                
-                // Scanned PDF detection
-                if (isScanned) {
-                    issues.push({
-                        type: "scanned_pdf",
-                        severity: "high",
-                        message: "No selectable text found - appears to be a scanned image",
-                        fix: "Use OCR to extract text or recreate as a text-based PDF"
-                    });
-                }
-                
-                // Microsoft Word bonus (good)
-                if (creator.includes("Microsoft Word") || producer.includes("Microsoft Word")) {
-                    issues.push({
-                        type: "word_pdf",
-                        severity: "good",
-                        message: "Generated by Microsoft Word",
-                        fix: "No action needed - Word PDFs are ATS-friendly"
-                    });
-                }
-                
-                return {
-                    pageCount: numPages,
-                    creator: creator,
-                    producer: producer,
-                    isMultiColumn: isMultiColumn,
-                    hasHeaders: hasHeaders,
-                    hasFooters: hasFooters,
-                    isScanned: isScanned,
-                    isResumeBuilder: isResumeBuilder,
-                    issues: issues,
-                    textLength: totalTextLength,
-                    fileSize: fileSize
+                const builders = {
+                    'Canva': 'Canva',
+                    'Novoresume': 'Novoresume',
+                    'Zety': 'Zety',
+                    'Resume.io': 'Resume.io',
+                    'EnhanCV': 'EnhanCV',
+                    'CVMaker': 'CVMaker',
+                    'Wix': 'Wix',
+                    'Adobe Illustrator': 'Adobe Illustrator'
                 };
+                
+                for (const [key, name] of Object.entries(builders)) {
+                    if (creator.includes(key) || producer.includes(key)) {
+                        return { detected: true, name: name, creator: creator };
+                    }
+                }
+                
+                return { detected: false, name: null, creator: creator };
             };
 
-            const parsePDF = async (file) => {
+            const analyzePdfStructure = async (pdf) => {
+                const issues = [];
+                try {
+                    const page = await pdf.getPage(1);
+                    const textContent = await page.getTextContent();
+                    const viewport = page.getViewport({ scale: 1 });
+                    
+                    // Detect multi-column
+                    const xPositions = textContent.items.map(item => item.transform[4]);
+                    const uniqueX = [...new Set(xPositions.map(x => Math.round(x)))];
+                    const isMultiColumn = uniqueX.length > 3 && textContent.items.length > 20;
+                    
+                    if (isMultiColumn) {
+                        issues.push({
+                            type: 'multi_column',
+                            severity: 'high',
+                            message: 'Multi-column layout detected',
+                            fix: 'Convert to single-column format for ATS compatibility'
+                        });
+                    }
+                    
+                    // Detect tables (grid pattern)
+                    const yPositions = textContent.items.map(item => Math.round(item.transform[5]));
+                    const yGroups = {};
+                    yPositions.forEach(y => { yGroups[y] = (yGroups[y] || 0) + 1; });
+                    const hasTables = Object.values(yGroups).some(count => count > 10);
+                    
+                    if (hasTables) {
+                        issues.push({
+                            type: 'tables',
+                            severity: 'medium',
+                            message: 'Table structure detected',
+                            fix: 'Convert tables to bullet points or comma-separated lists'
+                        });
+                    }
+                    
+                    // Detect header text
+                    const headerItems = textContent.items.filter(item => item.transform[5] < 100);
+                    if (headerItems.length > 0) {
+                        issues.push({
+                            type: 'header_text',
+                            severity: 'low',
+                            message: 'Text detected in header area',
+                            fix: 'Move contact information to the body of your resume'
+                        });
+                    }
+                } catch (e) {
+                    console.warn('Structure analysis failed:', e);
+                }
+                
+                return issues;
+            };
+
+            const checkExtractionQuality = (extractedText, pageCount) => {
+                const issues = [];
+                
+                if (extractedText.length < 500 && pageCount > 0) {
+                    issues.push({
+                        type: 'scanned_pdf',
+                        severity: 'high',
+                        message: 'Very little text extracted. This may be a scanned image PDF.',
+                        fix: 'Use OCR or recreate as text PDF.'
+                    });
+                }
+                
+                const corruptionPatterns = [
+                    { pattern: /Â|Ã|â|ä|å|æ|ç|è|é|ê|ë|ì|í|î|ï/g, message: 'Encoding corruption detected (special characters)' },
+                    { pattern: /[A-Z]\.[a-z]+\.[A-Z]/, message: 'Spaces may be missing (periods instead of spaces)' }
+                ];
+                
+                for (const { pattern, message } of corruptionPatterns) {
+                    if (pattern.test(extractedText)) {
+                        issues.push({
+                            type: 'corruption',
+                            severity: 'medium',
+                            message: message,
+                            fix: 'Extraction may have errors. Review extracted text.'
+                        });
+                    }
+                }
+                
+                return issues;
+            };
+
+            const parsePDF = async (file, isJobDescription = false) => {
                 return new Promise((resolve, reject) => {
                     const reader = new FileReader();
                     reader.onload = async function(e) {
@@ -934,7 +1008,29 @@
                                 fullText += pageText + '\n';
                             }
                             
-                            resolve({ pdf, fullText });
+                            // Get metadata
+                            const metadata = await pdf.getMetadata();
+                            
+                            // Analyze structure for resume PDFs (not JDs)
+                            let structureIssues = [];
+                            let builderInfo = null;
+                            let qualityIssues = [];
+                            
+                            if (!isJobDescription) {
+                                structureIssues = await analyzePdfStructure(pdf);
+                                builderInfo = detectResumeBuilder(metadata);
+                                qualityIssues = checkExtractionQuality(fullText, pdf.numPages);
+                            }
+                            
+                            resolve({ 
+                                pdf, 
+                                fullText, 
+                                metadata, 
+                                structureIssues, 
+                                builderInfo, 
+                                qualityIssues,
+                                pageCount: pdf.numPages 
+                            });
                         } catch (error) {
                             reject(new Error('Failed to parse PDF: ' + error.message));
                         }
@@ -964,9 +1060,21 @@
                             reader.readAsText(file);
                         });
                     } else if (file.type === 'application/pdf') {
-                        const { pdf, fullText } = await parsePDF(file);
+                        const { fullText, metadata, structureIssues, builderInfo, qualityIssues, pageCount } = await parsePDF(file, false);
                         extractedText = fullText;
-                        pdfHealth = await analyzePDFHealth(pdf, file.size);
+                        
+                        // Build PDF health object
+                        const issues = [...structureIssues, ...qualityIssues];
+                        
+                        pdfHealth = {
+                            pageCount: pageCount,
+                            creator: metadata?.info?.Creator || '',
+                            producer: metadata?.info?.Producer || '',
+                            issues: issues,
+                            resumeBuilder: builderInfo,
+                            textLength: extractedText.length,
+                            fileSize: file.size
+                        };
                     } else {
                         setResumeParseError('Unsupported file type. Please upload .txt or .pdf');
                         setLoading(false);
@@ -1008,6 +1116,8 @@
                 
                 try {
                     let extractedText = '';
+                    let jdPdfHealth = null;
+                    
                     if (file.type === 'text/plain') {
                         const reader = new FileReader();
                         extractedText = await new Promise((resolve, reject) => {
@@ -1016,8 +1126,26 @@
                             reader.readAsText(file);
                         });
                     } else if (file.type === 'application/pdf') {
-                        const { fullText } = await parsePDF(file);
+                        const { fullText, metadata, pageCount } = await parsePDF(file, true);
                         extractedText = fullText;
+                        
+                        // Simple JD PDF health (lighter analysis)
+                        const issues = [];
+                        if (extractedText.length < 200) {
+                            issues.push({
+                                type: 'low_text',
+                                severity: 'medium',
+                                message: 'Very little text extracted from job description',
+                                fix: 'Try pasting the job description as text instead'
+                            });
+                        }
+                        
+                        jdPdfHealth = {
+                            pageCount: pageCount,
+                            creator: metadata?.info?.Creator || '',
+                            issues: issues,
+                            textLength: extractedText.length
+                        };
                     } else {
                         setJobDescriptionParseError('Unsupported file type. Please upload .txt or .pdf');
                         setLoading(false);
@@ -1031,11 +1159,25 @@
                     }
                     
                     setJobDescriptionText(extractedText);
+                    
+                    if (window.amplitude && jdPdfHealth) {
+                        amplitude.track('JD File Uploaded', {
+                            file_type: file.type,
+                            text_length: extractedText.length,
+                            issues: jdPdfHealth.issues.length
+                        });
+                    }
+                    
                 } catch (error) {
                     setJobDescriptionParseError(error.message);
                 } finally {
                     setLoading(false);
                 }
+            };
+
+            // Generate cache key for resume
+            const getCacheKey = (text) => {
+                return `veritas_result_${btoa(text.substring(0, 500))}`;
             };
 
             const analyzeResume = async () => {
@@ -1049,36 +1191,77 @@
                     return;
                 }
 
+                // ============================================================
+                // RATE LIMITING (V8.1.1 NEW)
+                // ============================================================
+                const now = Date.now();
+                const timeSinceLastAnalysis = now - lastAnalysisTime;
+                const cooldownSeconds = 5;
+                const cooldownMs = cooldownSeconds * 1000;
+
+                if (timeSinceLastAnalysis < cooldownMs && lastAnalysisTime !== 0) {
+                    const remainingSeconds = Math.ceil((cooldownMs - timeSinceLastAnalysis) / 1000);
+                    alert(`Please wait ${remainingSeconds} second${remainingSeconds !== 1 ? 's' : ''} between analyses.`);
+                    return;
+                }
+
+                setLastAnalysisTime(now);
                 setLoading(true);
                 setResult(null);
+                
+                // ============================================================
+                // PROGRESSIVE LOADING UI (V8.1.1 NEW)
+                // ============================================================
+                setAnalysisStage('Parsing resume structure...');
 
                 if (window.amplitude) {
                     amplitude.track('Resume Analysis Started', {
                         mode: isComparisonMode ? 'comparison' : 'standard',
-                        timestamp: new Date().toISOString()
+                        timestamp: new Date().toISOString(),
+                        resume_length: resumeText.length
                     });
+                }
+
+                // ============================================================
+                // CLIENT-SIDE CACHING (V8.1.1 NEW)
+                // ============================================================
+                const cacheKey = getCacheKey(resumeText);
+                const cached = localStorage.getItem(cacheKey);
+                if (cached && !isComparisonMode) {
+                    try {
+                        const { result: cachedResult, timestamp } = JSON.parse(cached);
+                        if (Date.now() - timestamp < 3600000) { // 1 hour
+                            setResult(cachedResult);
+                            setLoading(false);
+                            setAnalysisStage('');
+                            if (window.amplitude) {
+                                amplitude.track('Resume Analysis Cache Hit', {
+                                    mode: isComparisonMode ? 'comparison' : 'standard'
+                                });
+                            }
+                            return;
+                        }
+                    } catch (e) {
+                        console.warn('Cache read failed:', e);
+                    }
                 }
 
                 try {
                     const workerUrl = isComparisonMode ? COMPARE_WORKER_URL : STANDARD_WORKER_URL;
                     
-                    // Include PDF health data if available
+                    setAnalysisStage('Analyzing ATS compatibility...');
+                    
                     const payload = isComparisonMode 
-                        ? { 
-                            resumeText: resumeText,
-                            resumePdfHealth: resumePdfHealth,
-                            jobDescriptionText: jobDescriptionText 
-                          }
-                        : { 
-                            resumeText: resumeText,
-                            resumePdfHealth: resumePdfHealth
-                          };
+                        ? { resumeText: resumeText, jobDescriptionText: jobDescriptionText }
+                        : { resumeText: resumeText };
                     
                     const response = await fetch(workerUrl, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify(payload)
                     });
+
+                    setAnalysisStage('Generating recommendations...');
 
                     const data = await response.json();
                     
@@ -1093,8 +1276,27 @@
                         
                         // Attach PDF health to result
                         parsedResult.pdf_health = resumePdfHealth;
-                        
                         setResult(parsedResult);
+                        
+                        // ============================================================
+                        // CLIENT-SIDE CACHING - SAVE RESULT (V8.1.1 NEW)
+                        // ============================================================
+                        if (!isComparisonMode) {
+                            localStorage.setItem(cacheKey, JSON.stringify({
+                                result: parsedResult,
+                                timestamp: Date.now()
+                            }));
+                        }
+                        
+                        // ============================================================
+                        // SCAN COUNT TRACKING FOR UPGRADE PROMPT (V8.1.1 NEW)
+                        // ============================================================
+                        const newCount = scanCount + 1;
+                        setScanCount(newCount);
+                        localStorage.setItem('veritas_scan_count', newCount);
+                        if (newCount >= 10 && !showUpgradePrompt) {
+                            setShowUpgradePrompt(true);
+                        }
                         
                         if (window.amplitude) {
                             amplitude.track('Resume Analysis Completed', {
@@ -1110,12 +1312,24 @@
                     }
                 } catch (error) {
                     console.error('Analysis error:', error);
-                    alert('Error analyzing resume. Please try again.');
+                    
+                    // ============================================================
+                    // ERROR TELEMETRY (V8.1.1 NEW)
+                    // ============================================================
                     if (window.amplitude) {
-                        amplitude.track('Resume Analysis Error', { error: error.message });
+                        amplitude.track('Resume Analysis Error', {
+                            error_message: error.message,
+                            error_stack: error.stack,
+                            resume_length: resumeText.length,
+                            mode: isComparisonMode ? 'comparison' : 'standard',
+                            browser: navigator.userAgent
+                        });
                     }
+                    
+                    alert('Error analyzing resume. Please try again.');
                 } finally {
                     setLoading(false);
+                    setAnalysisStage('');
                 }
             };
 
@@ -1191,6 +1405,41 @@
                 return 'risk-medium';
             };
 
+            const getPdfHealthScore = () => {
+                if (!resumePdfHealth?.issues) return null;
+                const issues = resumePdfHealth.issues;
+                let score = 100;
+                for (const issue of issues) {
+                    if (issue.severity === 'high') score -= 15;
+                    else if (issue.severity === 'medium') score -= 8;
+                    else if (issue.severity === 'low') score -= 3;
+                }
+                return Math.max(0, Math.min(100, score));
+            };
+
+            const isPdfHealthCritical = () => {
+                const score = getPdfHealthScore();
+                return score !== null && score < 70;
+            };
+
+            const getPdfHealthLabel = () => {
+                const score = getPdfHealthScore();
+                if (score === null) return null;
+                if (score >= 90) return 'Excellent';
+                if (score >= 80) return 'Good';
+                if (score >= 70) return 'Moderate';
+                if (score >= 60) return 'Poor';
+                return 'Critical';
+            };
+
+            const getPdfHealthColor = () => {
+                const score = getPdfHealthScore();
+                if (score === null) return '#6b7280';
+                if (score >= 80) return '#10b981';
+                if (score >= 70) return '#f59e0b';
+                return '#ef4444';
+            };
+
             const getRoleMatchDisclaimer = (roleMatches, atsScore, positionScore) => {
                 if (!roleMatches || roleMatches.length === 0) return null;
                 
@@ -1250,48 +1499,8 @@
                 return null;
             };
 
-            // Determine if PDF health is critical (score < 70)
-            // Note: The actual PDF health score comes from Gemini analysis
-            // For now, we estimate based on issues severity
-            const getPdfHealthScore = () => {
-                if (!result?.pdf_health?.issues) return null;
-                const issues = result.pdf_health.issues;
-                let score = 100;
-                for (const issue of issues) {
-                    if (issue.severity === 'high') score -= 15;
-                    else if (issue.severity === 'medium') score -= 8;
-                    else if (issue.severity === 'low') score -= 3;
-                    else if (issue.severity === 'good') score += 5;
-                }
-                return Math.max(0, Math.min(100, score));
-            };
-
-            const isPdfHealthCritical = () => {
-                const score = getPdfHealthScore();
-                return score !== null && score < 70;
-            };
-
-            const getPdfHealthLabel = () => {
-                const score = getPdfHealthScore();
-                if (score === null) return null;
-                if (score >= 90) return 'Excellent';
-                if (score >= 80) return 'Good';
-                if (score >= 70) return 'Moderate';
-                if (score >= 60) return 'Poor';
-                return 'Critical';
-            };
-
-            const getPdfHealthColor = () => {
-                const score = getPdfHealthScore();
-                if (score === null) return '#6b7280';
-                if (score >= 80) return '#10b981';
-                if (score >= 70) return '#f59e0b';
-                return '#ef4444';
-            };
-
-            // Render PDF Health Section (used in both top and bottom placements)
             const renderPdfHealthSection = (isCritical) => {
-                if (!result?.pdf_health?.issues || result.pdf_health.issues.length === 0) return null;
+                if (!resumePdfHealth?.issues || resumePdfHealth.issues.length === 0) return null;
                 
                 const score = getPdfHealthScore();
                 const label = getPdfHealthLabel();
@@ -1306,16 +1515,26 @@
                             <strong>Score: {score}/100 ({label})</strong>
                             {isCritical && ' — Fix these issues before submitting your resume.'}
                         </p>
-                        {result.pdf_health.issues.map((issue, idx) => {
+                        
+                        {/* Resume Builder Detection */}
+                        {resumePdfHealth.resumeBuilder?.detected && (
+                            <div className="pdf-issue high">
+                                <div className="pdf-issue-header">⚠️ Resume Builder Detected: {resumePdfHealth.resumeBuilder.name}</div>
+                                <div className="pdf-issue-message">Resume builders often inject hidden characters that break ATS parsers.</div>
+                                <div className="pdf-issue-fix">Fix: Export as plain text or use Microsoft Word.</div>
+                            </div>
+                        )}
+                        
+                        {/* Structure and Quality Issues */}
+                        {resumePdfHealth.issues.map((issue, idx) => {
                             let icon = '🟡';
                             if (issue.severity === 'high') icon = '🔴';
                             else if (issue.severity === 'low') icon = '🟢';
-                            else if (issue.severity === 'good') icon = '✅';
                             
                             return (
-                                <div key={idx} className="pdf-issue">
+                                <div key={idx} className={`pdf-issue ${issue.severity}`}>
                                     <div className="pdf-issue-header">{icon} {issue.message}</div>
-                                    <div className="pdf-issue-message">{issue.fix}</div>
+                                    <div className="pdf-issue-fix">{issue.fix}</div>
                                 </div>
                             );
                         })}
@@ -1352,7 +1571,6 @@
                         {!loading && !result && (
                             <div>
                                 {!isComparisonMode ? (
-                                    // Standard Mode - Single Input
                                     <div>
                                         <div className="input-panel">
                                             <h3>📋 Resume</h3>
@@ -1385,9 +1603,7 @@
                                         </button>
                                     </div>
                                 ) : (
-                                    // Comparison Mode - Dual Inputs
                                     <div className="dual-input-grid">
-                                        {/* Resume Panel */}
                                         <div className="input-panel">
                                             <h3>📋 Resume</h3>
                                             <textarea
@@ -1415,7 +1631,6 @@
                                             )}
                                         </div>
 
-                                        {/* Job Description Panel */}
                                         <div className="input-panel">
                                             <h3>🎯 Job Description</h3>
                                             <textarea
@@ -1457,20 +1672,18 @@
                             <div className="loading">
                                 <div className="spinner"></div>
                                 <p>Analyzing your resume...</p>
-                                <small>This may take 15-30 seconds</small>
+                                {analysisStage && <div className="loading-stage">{analysisStage}</div>}
                             </div>
                         )}
 
                         {result && (
                             <div className="results-container">
-                                {/* Fallback Note */}
                                 {result.fallback_used && (
                                     <div className="fallback-note">
                                         ℹ️ {result.fallback_note || `Analysis completed using ${result.model_used} due to high demand. Quality unchanged.`}
                                     </div>
                                 )}
 
-                                {/* Score Grid - Always at top */}
                                 <div className="score-grid">
                                     <div className="score-card">
                                         <h4>ATS Score</h4>
@@ -1480,8 +1693,7 @@
                                         <div className="score-label">/100 ({getScoreGrade(result.total_ats_score)})</div>
                                     </div>
 
-                                    {/* PDF Health Score Card - Always in grid */}
-                                    {result.pdf_health && result.pdf_health.issues && (
+                                    {resumePdfHealth && resumePdfHealth.issues && (
                                         <div className="score-card">
                                             <h4>📄 PDF Health Score</h4>
                                             <div className="score-value" style={{ color: getPdfHealthColor() }}>
@@ -1515,10 +1727,8 @@
                                     </div>
                                 </div>
 
-                                {/* Conditional PDF Health Report - CRITICAL (score < 70) goes here (top) */}
                                 {isPdfHealthCritical() && renderPdfHealthSection(true)}
 
-                                {/* Credibility Score Section */}
                                 {result.credibility_score !== undefined && (
                                     <div className="credibility-container">
                                         <div className="credibility-header">
@@ -1558,7 +1768,6 @@
                                             </div>
                                         </div>
 
-                                        {/* Career Plausibility Flags */}
                                         {result.credibility_analysis?.career_plausibility_flags?.length > 0 && (
                                             <div style={{ marginTop: '20px' }}>
                                                 <h4 style={{ marginBottom: '10px', color: '#1a365d' }}>📈 Career Trajectory Flags</h4>
@@ -1572,7 +1781,6 @@
                                             </div>
                                         )}
 
-                                        {/* Education-Title Flags */}
                                         {result.credibility_analysis?.education_title_flags?.length > 0 && (
                                             <div style={{ marginTop: '20px' }}>
                                                 <h4 style={{ marginBottom: '10px', color: '#1a365d' }}>🎓 Education-Title Flags</h4>
@@ -1586,7 +1794,6 @@
                                             </div>
                                         )}
 
-                                        {/* Metric Plausibility Flags */}
                                         {result.credibility_analysis?.metric_plausibility_flags?.length > 0 && (
                                             <div style={{ marginTop: '20px' }}>
                                                 <h4 style={{ marginBottom: '10px', color: '#1a365d' }}>📊 Metric Plausibility Flags</h4>
@@ -1600,7 +1807,6 @@
                                             </div>
                                         )}
 
-                                        {/* Acting Title Flags */}
                                         {result.credibility_analysis?.acting_title_flags?.length > 0 && (
                                             <div style={{ marginTop: '20px' }}>
                                                 <h4 style={{ marginBottom: '10px', color: '#1a365d' }}>🎭 "Acting" / Interim Title Flags</h4>
@@ -1614,7 +1820,6 @@
                                             </div>
                                         )}
 
-                                        {/* Promotion Signals */}
                                         {result.credibility_analysis?.promotion_signals?.length > 0 && (
                                             <div style={{ marginTop: '20px' }}>
                                                 <h4 style={{ marginBottom: '10px', color: '#1a365d' }}>📈 Promotion Signals</h4>
@@ -1626,7 +1831,6 @@
                                             </div>
                                         )}
 
-                                        {/* Recency Note */}
                                         {result.credibility_analysis?.recency_note && (
                                             <div style={{ marginTop: '15px', fontSize: '13px', color: '#6b7280', fontStyle: 'italic' }}>
                                                 📅 {result.credibility_analysis.recency_note}
@@ -1635,7 +1839,6 @@
                                     </div>
                                 )}
 
-                                {/* Semantic Analysis Section */}
                                 {result.semantic_analysis && (
                                     <div className="semantic-container">
                                         <div className="semantic-header">
@@ -1648,7 +1851,6 @@
                                             )}
                                         </div>
 
-                                        {/* Semantic Stats Grid */}
                                         <div className="semantic-stats">
                                             <div className="semantic-stat">
                                                 <div className="semantic-stat-label">Position Score</div>
@@ -1697,7 +1899,6 @@
                                             </div>
                                         </div>
 
-                                        {/* Short Position Score Explainer - UPDATED with Alignment Score explanation */}
                                         <div className="explainer" onClick={() => setShowPositionExplainer(!showPositionExplainer)}>
                                             ℹ️ How to read this score (Click here)
                                             <div className={`explainer-content ${showPositionExplainer ? 'show' : ''}`}>
@@ -1720,8 +1921,7 @@
                                                 • 7-8: Good — minor adjustments may help<br/>
                                                 • 5-6: Fair — moderate adjustments recommended<br/>
                                                 • 3-4: Poor — significant changes needed<br/>
-                                                • 1-2: Critical — major repositioning required<br/><br/>
-                                                Think of this as a confidence score for your positioning. A high alignment score means your verbs, titles, and achievements consistently match your level.
+                                                • 1-2: Critical — major repositioning required
                                             </div>
                                         </div>
 
@@ -1753,7 +1953,6 @@
                                     </div>
                                 )}
 
-                                {/* V8 Sections: Bloom, Grammar, Missing Tools, Weak Metrics, Suggested Rewrites */}
                                 {result.bloom_analysis && (
                                     <div className="v8-section">
                                         <div className="results-section">
@@ -1870,7 +2069,6 @@
                                     </div>
                                 )}
 
-                                {/* Two-Column Results */}
                                 <div className="results-grid">
                                     <div className="results-section">
                                         <h3>✅ What's Working Well</h3>
@@ -1951,7 +2149,6 @@
                                     </div>
                                 </div>
 
-                                {/* All Issues Table */}
                                 {result.all_issues?.length > 0 && (
                                     <div className="results-section" style={{ marginTop: '20px' }}>
                                         <h3>📋 All Identified Issues ({result.all_issues.length})</h3>
@@ -1971,7 +2168,6 @@
                                     </div>
                                 )}
 
-                                {/* Metric Quality Breakdown */}
                                 {result.metric_quality_breakdown && (
                                     <div className="results-section" style={{ marginTop: '20px' }}>
                                         <h3>📊 Metric Quality Breakdown</h3>
@@ -1995,10 +2191,8 @@
                                     </div>
                                 )}
 
-                                {/* Conditional PDF Health Report - GOOD (score ≥ 70) goes here (bottom, after Metric Quality) */}
                                 {!isPdfHealthCritical() && renderPdfHealthSection(false)}
 
-                                {/* Score Breakdown Table */}
                                 {result.breakdown && (
                                     <div className="results-section" style={{ marginTop: '20px' }}>
                                         <h3>📊 Score Breakdown</h3>
@@ -2020,7 +2214,6 @@
                                     </div>
                                 )}
 
-                                {/* Email Capture */}
                                 <div className="email-capture">
                                     <h3>📧 Get Your Full Report</h3>
                                     <p>Enter your email to receive a detailed PDF with all findings, personalized recommendations, and a complete action plan.</p>
@@ -2031,6 +2224,22 @@
                                         </div>
                                     ) : (<p style={{ color: '#10b981', fontWeight: 'bold' }}>✅ Full report will be sent to {email}</p>)}
                                 </div>
+
+                                {/* Upgrade Prompt (V8.1.1 NEW) */}
+                                {showUpgradePrompt && (
+                                    <div className="upgrade-prompt">
+                                        <h3>🚀 Upgrade to ResumeRx</h3>
+                                        <p>You've used 10 free scans. Get unlimited scans, PDF reports, and priority analysis.</p>
+                                        <div className="upgrade-buttons">
+                                            <button className="upgrade-btn-primary" onClick={() => window.location.href = '/pricing'}>
+                                                Upgrade Now → $9.99/month
+                                            </button>
+                                            <button className="upgrade-btn-secondary" onClick={() => setShowUpgradePrompt(false)}>
+                                                Remind me later
+                                            </button>
+                                        </div>
+                                    </div>
+                                )}
 
                                 <button 
                                     onClick={() => {
@@ -2048,6 +2257,8 @@
                                         setShowSemanticExplainer(false);
                                         setShowPositionExplainer(false);
                                         setShowCredibilityShortExplainer(false);
+                                        setShowUpgradePrompt(false);
+                                        setAnalysisStage('');
                                     }}
                                     style={{ marginTop: '30px', background: '#6b7280', width: '100%', padding: '16px', borderRadius: '8px', border: 'none', color: 'white', fontWeight: '600', cursor: 'pointer' }}
                                 >
