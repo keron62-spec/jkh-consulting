@@ -464,6 +464,32 @@
             transition: width 0.5s ease;
         }
 
+        .semantic-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+            padding: 15px;
+            background: white;
+            border-radius: 12px;
+        }
+
+        .semantic-stat {
+            text-align: center;
+        }
+
+        .semantic-stat-label {
+            font-size: 12px;
+            color: #6b7280;
+            margin-bottom: 5px;
+        }
+
+        .semantic-stat-value {
+            font-size: 18px;
+            font-weight: 700;
+            color: #1a365d;
+        }
+
         .explainer {
             background: #f1f5f9;
             padding: 12px;
@@ -647,12 +673,111 @@
             color: #92400e;
         }
 
+        /* V8 New Section Styles */
+        .v8-section {
+            margin-top: 20px;
+        }
+
+        .v8-section h3 {
+            color: #1a365d;
+            margin-bottom: 15px;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 8px;
+        }
+
+        .bloom-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+
+        .bloom-stat {
+            text-align: center;
+            padding: 10px;
+            background: white;
+            border-radius: 8px;
+        }
+
+        .bloom-stat-label {
+            font-size: 11px;
+            color: #6b7280;
+        }
+
+        .bloom-stat-value {
+            font-size: 20px;
+            font-weight: 700;
+            color: #1a365d;
+        }
+
+        .bullets-by-level {
+            margin-top: 10px;
+        }
+
+        .level-badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 10px;
+            font-weight: 600;
+            margin-right: 8px;
+        }
+
+        .level-1 { background: #f3f4f6; color: #374151; }
+        .level-2 { background: #e5e7eb; color: #374151; }
+        .level-3 { background: #d1fae5; color: #065f46; }
+        .level-4 { background: #fed7aa; color: #9b2c1d; }
+        .level-5 { background: #fee2e2; color: #991b1b; }
+        .level-6 { background: #fef3c7; color: #92400e; }
+
+        .grammar-item, .missing-tool-item, .rewrite-item {
+            background: white;
+            padding: 12px;
+            margin: 10px 0;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+        }
+
+        .grammar-item .error-type {
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            margin-bottom: 5px;
+        }
+
+        .grammar-item .original {
+            font-family: monospace;
+            font-size: 12px;
+            background: #f3f4f6;
+            padding: 4px 8px;
+            border-radius: 4px;
+            margin: 5px 0;
+        }
+
+        .grammar-item .suggestion {
+            color: #10b981;
+            margin-top: 5px;
+        }
+
+        .industry-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            background: #e0f2fe;
+            color: #0369a1;
+            margin-left: 10px;
+        }
+
         @media (max-width: 768px) {
             .dual-input-grid { grid-template-columns: 1fr; }
             .results-grid { grid-template-columns: 1fr; }
             .email-input { flex-direction: column; }
             .email-input button { width: 100%; }
             .score-grid { grid-template-columns: repeat(2, 1fr); }
+            .semantic-stats { grid-template-columns: repeat(2, 1fr); }
+            .bloom-stats { grid-template-columns: repeat(2, 1fr); }
         }
     </style>
 </head>
@@ -662,9 +787,9 @@
     <script type="text/babel">
         const { useState } = React;
 
-        // DUAL WORKER ROUTING - V7.1
+        // DUAL WORKER ROUTING - V8
         const STANDARD_WORKER_URL = "https://ats-resume-only.keron62.workers.dev";
-        const COMPARE_WORKER_URL = "https://ats-proxy.keron62.workers.dev";
+        const COMPARE_WORKER_URL = "https://ats-compare-proxy.keron62.workers.dev";
 
         function ATSScanner() {
             const [isComparisonMode, setIsComparisonMode] = useState(false);
@@ -685,6 +810,8 @@
             const [emailSent, setEmailSent] = useState(false);
             const [showCredibilityExplainer, setShowCredibilityExplainer] = useState(false);
             const [showSemanticExplainer, setShowSemanticExplainer] = useState(false);
+            const [showPositionExplainer, setShowPositionExplainer] = useState(false);
+            const [showCredibilityShortExplainer, setShowCredibilityShortExplainer] = useState(false);
 
             const parsePDF = async (file) => {
                 return new Promise((resolve, reject) => {
@@ -1180,16 +1307,23 @@
                                             </div>
                                         </div>
 
-                                        <div className="explainer" onClick={() => setShowCredibilityExplainer(!showCredibilityExplainer)}>
+                                        <div className="explainer" onClick={() => setShowCredibilityShortExplainer(!showCredibilityShortExplainer)}>
                                             Credibility Score Explained (Click here)
-                                            <div className={`explainer-content ${showCredibilityExplainer ? 'show' : ''}`}>
+                                            <div className={`explainer-content ${showCredibilityShortExplainer ? 'show' : ''}`}>
+                                                <strong>What is the Credibility Score?</strong><br/>
                                                 The credibility score (0-100) measures how believable your resume is, separate from your ATS score.<br/><br/>
-                                                <strong>90-100:</strong> Highly credible — no red flags<br/>
-                                                <strong>80-89:</strong> Credible — minor concerns<br/>
-                                                <strong>70-79:</strong> Moderately credible — some flags<br/>
-                                                <strong>60-69:</strong> Questionable — multiple flags<br/>
-                                                <strong>Below 60:</strong> Low credibility — significant concerns<br/><br/>
-                                                A high ATS score with low credibility suggests your resume is well-formatted but may be inflated.
+                                                <strong>How it's calculated:</strong><br/>
+                                                • Career trajectory (do your promotions make sense?)<br/>
+                                                • Education vs. title (is a "Director" degree-appropriate?)<br/>
+                                                • Metric plausibility (are your numbers realistic?)<br/>
+                                                • Cognitive complexity (Bloom) — is your language appropriate for your level?<br/><br/>
+                                                <strong>What the score means:</strong><br/>
+                                                • 90-100: Highly credible — no red flags<br/>
+                                                • 80-89: Credible — minor concerns<br/>
+                                                • 70-79: Moderately credible — some flags<br/>
+                                                • 60-69: Questionable — multiple flags<br/>
+                                                • Below 60: Low credibility — significant concerns<br/><br/>
+                                                A high ATS score with low credibility means your resume is well-formatted but may be inflated.
                                             </div>
                                         </div>
 
@@ -1278,6 +1412,37 @@
                                             <span className={`semantic-badge ${getSemanticColor(result.semantic_analysis.position_score)}`}>
                                                 {getPositionLabel(result.semantic_analysis.position_score)}
                                             </span>
+                                            {result.role_type_detected && (
+                                                <span className="industry-badge">Industry: {result.role_type_detected}</span>
+                                            )}
+                                        </div>
+
+                                        {/* Semantic Stats Grid - FIXED for V8 */}
+                                        <div className="semantic-stats">
+                                            <div className="semantic-stat">
+                                                <div className="semantic-stat-label">Position Score</div>
+                                                <div className="semantic-stat-value" style={{ 
+                                                    color: Math.abs(result.semantic_analysis.position_score) <= 1.5 ? '#10b981' :
+                                                           Math.abs(result.semantic_analysis.position_score) <= 3.5 ? '#f59e0b' : '#ef4444'
+                                                }}>
+                                                    {result.semantic_analysis.position_score !== undefined && result.semantic_analysis.position_score !== null ? (
+                                                        <span>
+                                                            {result.semantic_analysis.position_score > 0 ? '+' : ''}
+                                                            {result.semantic_analysis.position_score}
+                                                        </span>
+                                                    ) : 'N/A'}
+                                                </div>
+                                            </div>
+                                            <div className="semantic-stat">
+                                                <div className="semantic-stat-label">Detected Level</div>
+                                                <div className="semantic-stat-value">
+                                                    {result.semantic_analysis.detected_level || 'N/A'}
+                                                </div>
+                                            </div>
+                                            <div className="semantic-stat">
+                                                <div className="semantic-stat-label">Confidence</div>
+                                                <div className="semantic-stat-value">{result.semantic_analysis.confidence || 0}%</div>
+                                            </div>
                                         </div>
 
                                         <div className="position-scale">
@@ -1301,22 +1466,23 @@
                                             </div>
                                         </div>
 
-                                        <div className="explainer" onClick={() => setShowSemanticExplainer(!showSemanticExplainer)}>
+                                        {/* Short Position Score Explainer - V8 NEW */}
+                                        <div className="explainer" onClick={() => setShowPositionExplainer(!showPositionExplainer)}>
                                             ℹ️ How to read this score (Click here)
-                                            <div className={`explainer-content ${showSemanticExplainer ? 'show' : ''}`}>
-                                                <strong>POSITION SCORE (-5 to +5):</strong><br/>
-                                                Scores range from <strong>-5.0 (under-positioned)</strong> to <strong>+5.0 (over-positioned)</strong>.
-                                                <strong>0 is perfectly aligned</strong> — your verbs match your experience level.<br/><br/>
-                                                🟢 <strong>-1.5 to +1.5:</strong> Acceptable range. Minor improvements can reach perfect alignment.<br/>
-                                                🟠 <strong>-3.5 to -1.5 or +1.5 to +3.5:</strong> Moderate adjustments needed.<br/>
-                                                🔴 <strong>Beyond ±3.5:</strong> Critical repositioning needed.<br/><br/>
-                                                <strong>ALIGNMENT SCORE (1-10):</strong><br/>
-                                                Measures how close your resume is to perfectly positioned.<br/><br/>
-                                                <strong>10:</strong> Perfect — no changes needed<br/>
-                                                <strong>8-9:</strong> Excellent — minor tweaks only<br/>
-                                                <strong>6-7:</strong> Good — moderate adjustments<br/>
-                                                <strong>4-5:</strong> Fair — significant improvements<br/>
-                                                <strong>1-3:</strong> Poor — major repositioning
+                                            <div className={`explainer-content ${showPositionExplainer ? 'show' : ''}`}>
+                                                <strong>POSITION SCORE (-5 to +5)</strong><br/>
+                                                Measures whether your resume language matches your experience level.<br/><br/>
+                                                <strong>How it's calculated:</strong><br/>
+                                                • Verb strength ("Led" vs "Assisted")<br/>
+                                                • Cognitive complexity (Bloom's Taxonomy: Remember → Create)<br/>
+                                                • Your job title vs. years of experience<br/>
+                                                • Industry expectations<br/><br/>
+                                                <strong>What the score means:</strong><br/>
+                                                • -1.5 to +1.5 → ✅ Perfectly aligned<br/>
+                                                • -3.5 to -1.5 → ⚠️ You sound junior (under-positioned)<br/>
+                                                • +1.5 to +3.5 → ⚠️ You sound senior (over-positioned)<br/>
+                                                • Beyond ±3.5 → 🔴 Critical mismatch<br/><br/>
+                                                0 is the goal — perfectly positioned for your level.
                                             </div>
                                         </div>
 
@@ -1345,6 +1511,127 @@
                                                 </ul>
                                             </div>
                                         )}
+                                    </div>
+                                )}
+
+                                {/* V8 NEW: Bloom Analysis Section */}
+                                {result.bloom_analysis && (
+                                    <div className="v8-section">
+                                        <div className="results-section">
+                                            <h3>🌿 Bloom's Taxonomy Analysis</h3>
+                                            <div className="bloom-stats">
+                                                <div className="bloom-stat">
+                                                    <div className="bloom-stat-label">Avg Bloom Level</div>
+                                                    <div className="bloom-stat-value">{result.bloom_analysis.average_bloom_level}</div>
+                                                </div>
+                                                <div className="bloom-stat">
+                                                    <div className="bloom-stat-label">Expected Level</div>
+                                                    <div className="bloom-stat-value">{result.bloom_analysis.expected_bloom_level}</div>
+                                                </div>
+                                                <div className="bloom-stat">
+                                                    <div className="bloom-stat-label">Gap</div>
+                                                    <div className="bloom-stat-value" style={{ color: result.bloom_analysis.bloom_gap > 0 ? '#ef4444' : result.bloom_analysis.bloom_gap < 0 ? '#f59e0b' : '#10b981' }}>
+                                                        {result.bloom_analysis.bloom_gap > 0 ? '+' : ''}{result.bloom_analysis.bloom_gap}
+                                                    </div>
+                                                </div>
+                                                <div className="bloom-stat">
+                                                    <div className="bloom-stat-label">Assessment</div>
+                                                    <div className="bloom-stat-value" style={{ fontSize: '14px' }}>{result.bloom_analysis.bloom_assessment}</div>
+                                                </div>
+                                            </div>
+                                            
+                                            {result.bloom_analysis.bullets_by_level && result.bloom_analysis.bullets_by_level.length > 0 && (
+                                                <div className="bullets-by-level">
+                                                    <strong>Bullets by Cognitive Level:</strong>
+                                                    {result.bloom_analysis.bullets_by_level.map((item, idx) => (
+                                                        <div key={idx} style={{ marginTop: '8px', fontSize: '13px' }}>
+                                                            <span className={`level-badge level-${item.level}`}>Level {item.level}</span>
+                                                            <span>{item.count} bullet{item.count !== 1 ? 's' : ''}</span>
+                                                            {item.example && <span style={{ color: '#6b7280', marginLeft: '10px' }}>— "{item.example.substring(0, 60)}..."</span>}
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            )}
+
+                                            {result.bloom_analysis.flags?.length > 0 && (
+                                                <div style={{ marginTop: '15px' }}>
+                                                    {result.bloom_analysis.flags.map((flag, idx) => (
+                                                        <div key={idx} className="flag-item">
+                                                            <strong>⚠️ {flag.type?.replace('_', ' ').toUpperCase()}</strong>
+                                                            <div>{flag.issue}</div>
+                                                            <div className="flag-suggestion">💡 {flag.suggestion}</div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* V8 NEW: Grammar Issues Section */}
+                                {result.grammar_issues && result.grammar_issues.length > 0 && (
+                                    <div className="v8-section">
+                                        <div className="results-section">
+                                            <h3>📝 Grammar & Spelling Issues</h3>
+                                            {result.grammar_issues.map((issue, idx) => (
+                                                <div key={idx} className="grammar-item">
+                                                    <div className="error-type" style={{ color: issue.error_type === 'spelling' ? '#ef4444' : issue.error_type === 'grammar' ? '#f59e0b' : '#3b82f6' }}>
+                                                        {issue.error_type.toUpperCase()}
+                                                    </div>
+                                                    <div className="original">"{issue.original_text}"</div>
+                                                    <div style={{ fontSize: '12px', marginTop: '5px' }}>❌ {issue.issue}</div>
+                                                    <div className="suggestion">✅ {issue.suggestion}</div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* V8 NEW: Missing Tools Section */}
+                                {result.missing_tools && result.missing_tools.length > 0 && (
+                                    <div className="v8-section">
+                                        <div className="results-section">
+                                            <h3>🔧 Missing Tools Detected</h3>
+                                            {result.missing_tools.map((tool, idx) => (
+                                                <div key={idx} className="missing-tool-item">
+                                                    <strong>{tool.tool_name}</strong> <span style={{ color: '#6b7280' }}>({tool.category})</span>
+                                                    <div className="flag-suggestion">💡 {tool.suggestion}</div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* V8 NEW: Per-Metric Quality Details (Expandable) */}
+                                {result.weak_metrics_details && result.weak_metrics_details.length > 0 && (
+                                    <div className="v8-section">
+                                        <div className="results-section">
+                                            <h3>📊 Weak Metrics - Need Improvement</h3>
+                                            {result.weak_metrics_details.map((metric, idx) => (
+                                                <div key={idx} className="grammar-item" style={{ borderLeftColor: '#ef4444' }}>
+                                                    <div className="original">"{metric.bullet_text}"</div>
+                                                    <div style={{ fontSize: '12px', marginTop: '5px' }}>❌ {metric.reason}</div>
+                                                    <div className="suggestion">✅ {metric.fix}</div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* V8 NEW: Suggested Rewrites */}
+                                {result.suggested_rewrites && result.suggested_rewrites.length > 0 && (
+                                    <div className="v8-section">
+                                        <div className="results-section">
+                                            <h3>✏️ Suggested Rewrites</h3>
+                                            {result.suggested_rewrites.map((rewrite, idx) => (
+                                                <div key={idx} className="rewrite-item">
+                                                    <div><strong>Original:</strong> "{rewrite.original}"</div>
+                                                    <div style={{ marginTop: '8px' }}>❌ {rewrite.issue}</div>
+                                                    <div style={{ marginTop: '8px', color: '#10b981' }}><strong>Suggested:</strong> "{rewrite.suggested_rewrite}"</div>
+                                                    <div style={{ marginTop: '5px', fontSize: '12px', color: '#6b7280' }}>💡 {rewrite.reason}</div>
+                                                </div>
+                                            ))}
+                                        </div>
                                     </div>
                                 )}
 
@@ -1488,12 +1775,8 @@
                                                 <tr><td>Skills Section</td><td>{result.breakdown.skills_section || 0}</td><td>10</td></tr>
                                                 <tr><td>Length & Brevity</td><td>{result.breakdown.length_brevity || 0}</td><td>5</td></tr>
                                                 <tr><td>Publications & Projects</td><td>{result.breakdown.publications_projects || 0}</td><td>5</td></tr>
-                                                {result.breakdown.recruiter_scan_penalty !== undefined && (
-                                                    <tr><td>Recruiter Scan Penalty</td><td>{result.breakdown.recruiter_scan_penalty}</td><td>0</td></tr>
-                                                )}
-                                                {result.breakdown.buzzword_repetition_penalty !== undefined && (
-                                                    <tr><td>Buzzword/Repetition Penalty</td><td>{result.breakdown.buzzword_repetition_penalty}</td><td>0</td></tr>
-                                                )}
+                                                {result.breakdown.recruiter_scan_penalty !== undefined && (<tr><td>Recruiter Scan Penalty</td><td>{result.breakdown.recruiter_scan_penalty}</td><td>0</td></tr>)}
+                                                {result.breakdown.buzzword_repetition_penalty !== undefined && (<tr><td>Buzzword/Repetition Penalty</td><td>{result.breakdown.buzzword_repetition_penalty}</td><td>0</td></tr>)}
                                             </tbody>
                                         </table>
                                     </div>
@@ -1524,6 +1807,8 @@
                                         setEmailSent(false);
                                         setShowCredibilityExplainer(false);
                                         setShowSemanticExplainer(false);
+                                        setShowPositionExplainer(false);
+                                        setShowCredibilityShortExplainer(false);
                                     }}
                                     style={{ marginTop: '30px', background: '#6b7280', width: '100%', padding: '16px', borderRadius: '8px', border: 'none', color: 'white', fontWeight: '600', cursor: 'pointer' }}
                                 >
