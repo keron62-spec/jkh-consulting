@@ -766,7 +766,6 @@
         // DUAL WORKER ROUTING - V8.1
         const STANDARD_WORKER_URL = "https://ats-resume-only.keron62.workers.dev";
         const COMPARE_WORKER_URL = "https://ats-proxy.keron62.workers.dev";
-        const PARSER_WORKER_URL = "https://ats-parser.keron62.workers.dev";
 
         function ATSScanner() {
             const [isComparisonMode, setIsComparisonMode] = useState(false);
@@ -1039,107 +1038,86 @@
                 }
             };
 
-           const analyzeResume = async () => {
-    if (!resumeText.trim()) {
-        alert('Please provide resume text or upload a file.');
-        return;
-    }
+            const analyzeResume = async () => {
+                if (!resumeText.trim()) {
+                    alert('Please provide resume text or upload a file.');
+                    return;
+                }
 
-    if (isComparisonMode && !jobDescriptionText.trim()) {
-        alert('Please provide a job description or switch to Standard Mode.');
-        return;
-    }
+                if (isComparisonMode && !jobDescriptionText.trim()) {
+                    alert('Please provide a job description or switch to Standard Mode.');
+                    return;
+                }
 
-    setLoading(true);
-    setResult(null);
+                setLoading(true);
+                setResult(null);
 
-    if (window.amplitude) {
-        amplitude.track('Resume Analysis Started', {
-            mode: isComparisonMode ? 'comparison' : 'standard',
-            timestamp: new Date().toISOString()
-        });
-    }
+                if (window.amplitude) {
+                    amplitude.track('Resume Analysis Started', {
+                        mode: isComparisonMode ? 'comparison' : 'standard',
+                        timestamp: new Date().toISOString()
+                    });
+                }
 
-    try {
-        // STEP 1: Call Stage 1 Worker to parse resume
-        const parserResponse = await fetch(PARSER_WORKER_URL, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                resumeText: resumeText,
-                resumePdfHealth: resumePdfHealth
-            })
-        });
+                try {
+                    const workerUrl = isComparisonMode ? COMPARE_WORKER_URL : STANDARD_WORKER_URL;
+                    
+                    // Include PDF health data if available
+                    const payload = isComparisonMode 
+                        ? { 
+                            resumeText: resumeText,
+                            resumePdfHealth: resumePdfHealth,
+                            jobDescriptionText: jobDescriptionText 
+                          }
+                        : { 
+                            resumeText: resumeText,
+                            resumePdfHealth: resumePdfHealth
+                          };
+                    
+                    const response = await fetch(workerUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
 
-        const parserData = await parserResponse.json();
-        
-        if (parserData.error) {
-            throw new Error(parserData.error);
-        }
+                    const data = await response.json();
+                    
+                    if (data.error) {
+                        throw new Error(data.error || 'Analysis failed');
+                    }
 
-        const structuredResume = parserData.resume;
-        const pdfHealth = parserData.pdfHealth;
-
-        // STEP 2: Call Stage 2 Worker with structured resume
-        const workerUrl = isComparisonMode ? COMPARE_WORKER_URL : STANDARD_WORKER_URL;
-        
-        // Keep resumeText for backward compatibility with existing Stage 2 Workers
-        const payload = isComparisonMode 
-            ? { 
-                resumeText: resumeText,
-                resume: structuredResume,
-                resumePdfHealth: pdfHealth,
-                jobDescriptionText: jobDescriptionText 
-              }
-            : { 
-                resumeText: resumeText,
-                resume: structuredResume,
-                resumePdfHealth: pdfHealth
-              };
-        
-        const response = await fetch(workerUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-        });
-
-        const data = await response.json();
-        
-        if (data.error) {
-            throw new Error(data.error || 'Analysis failed');
-        }
-
-        if (data.candidates && data.candidates[0] && data.candidates[0].content) {
-            let jsonText = data.candidates[0].content.parts[0].text.trim();
-            jsonText = jsonText.replace(/```json\n?/g, '').replace(/```\n?/g, '');
-            const parsedResult = JSON.parse(jsonText);
-            
-            // Attach PDF health to result
-            parsedResult.pdf_health = pdfHealth;
-            
-            setResult(parsedResult);
-            
-            if (window.amplitude) {
-                amplitude.track('Resume Analysis Completed', {
-                    total_score: parsedResult.total_ats_score,
-                    credibility_score: parsedResult.credibility_score,
-                    fit_score: parsedResult.fit_score,
-                    mode: isComparisonMode ? 'comparison' : 'standard'
-                });
-            }
-        } else {
-            throw new Error('Invalid response format');
-        }
-    } catch (error) {
-        console.error('Analysis error:', error);
-        alert('Error analyzing resume. Please try again.');
-        if (window.amplitude) {
-            amplitude.track('Resume Analysis Error', { error: error.message });
-        }
-    } finally {
-        setLoading(false);
-    }
-};
+                    if (data.candidates && data.candidates[0] && data.candidates[0].content) {
+                        let jsonText = data.candidates[0].content.parts[0].text.trim();
+                        jsonText = jsonText.replace(/```json\n?/g, '').replace(/```\n?/g, '');
+                        const parsedResult = JSON.parse(jsonText);
+                        
+                        // Attach PDF health to result
+                        parsedResult.pdf_health = resumePdfHealth;
+                        
+                        setResult(parsedResult);
+                        
+                        if (window.amplitude) {
+                            amplitude.track('Resume Analysis Completed', {
+                                total_score: parsedResult.total_ats_score,
+                                credibility_score: parsedResult.credibility_score,
+                                fit_score: parsedResult.fit_score,
+                                semantic_score: parsedResult.semantic_analysis?.position_score,
+                                mode: isComparisonMode ? 'comparison' : 'standard'
+                            });
+                        }
+                    } else {
+                        throw new Error('Invalid response format');
+                    }
+                } catch (error) {
+                    console.error('Analysis error:', error);
+                    alert('Error analyzing resume. Please try again.');
+                    if (window.amplitude) {
+                        amplitude.track('Resume Analysis Error', { error: error.message });
+                    }
+                } finally {
+                    setLoading(false);
+                }
+            };
 
             const handleEmailSubmit = async () => {
                 if (!email || !email.includes('@')) {
