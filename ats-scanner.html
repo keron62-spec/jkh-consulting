@@ -1040,6 +1040,9 @@
                 });
             };
 
+            // ============================================================
+            // HANDLE RESUME FILE UPLOAD (WITH PROGRESSIVE STAGES - FIXED)
+            // ============================================================
             const handleResumeFileUpload = async (e) => {
                 const file = e.target.files[0];
                 if (!file) return;
@@ -1047,12 +1050,14 @@
                 setResumeFileName(file.name);
                 setResumeParseError(null);
                 setLoading(true);
+                setAnalysisStage('Loading PDF file...');
                 
                 try {
                     let extractedText = '';
                     let pdfHealth = null;
                     
                     if (file.type === 'text/plain') {
+                        setAnalysisStage('Reading text file...');
                         const reader = new FileReader();
                         extractedText = await new Promise((resolve, reject) => {
                             reader.onload = (event) => resolve(event.target.result);
@@ -1060,7 +1065,10 @@
                             reader.readAsText(file);
                         });
                     } else if (file.type === 'application/pdf') {
+                        setAnalysisStage('Parsing PDF structure...');
                         const { fullText, metadata, structureIssues, builderInfo, qualityIssues, pageCount } = await parsePDF(file, false);
+                        
+                        setAnalysisStage('Extracting text from PDF...');
                         extractedText = fullText;
                         
                         // Build PDF health object
@@ -1078,15 +1086,18 @@
                     } else {
                         setResumeParseError('Unsupported file type. Please upload .txt or .pdf');
                         setLoading(false);
+                        setAnalysisStage('');
                         return;
                     }
                     
                     if (!extractedText || extractedText.trim().length < 50) {
                         setResumeParseError('Could not extract enough text from the file.');
                         setLoading(false);
+                        setAnalysisStage('');
                         return;
                     }
                     
+                    setAnalysisStage('Finalizing...');
                     setResumeText(extractedText);
                     setResumePdfHealth(pdfHealth);
                     
@@ -1099,10 +1110,13 @@
                         });
                     }
                     
+                    setAnalysisStage('');
+                    setLoading(false);
+                    
                 } catch (error) {
                     setResumeParseError(error.message);
-                } finally {
                     setLoading(false);
+                    setAnalysisStage('');
                 }
             };
 
@@ -1113,12 +1127,14 @@
                 setJobDescriptionFileName(file.name);
                 setJobDescriptionParseError(null);
                 setLoading(true);
+                setAnalysisStage('Loading job description PDF...');
                 
                 try {
                     let extractedText = '';
                     let jdPdfHealth = null;
                     
                     if (file.type === 'text/plain') {
+                        setAnalysisStage('Reading job description text...');
                         const reader = new FileReader();
                         extractedText = await new Promise((resolve, reject) => {
                             reader.onload = (event) => resolve(event.target.result);
@@ -1126,7 +1142,9 @@
                             reader.readAsText(file);
                         });
                     } else if (file.type === 'application/pdf') {
+                        setAnalysisStage('Parsing job description PDF...');
                         const { fullText, metadata, pageCount } = await parsePDF(file, true);
+                        setAnalysisStage('Extracting text from job description...');
                         extractedText = fullText;
                         
                         // Simple JD PDF health (lighter analysis)
@@ -1149,15 +1167,18 @@
                     } else {
                         setJobDescriptionParseError('Unsupported file type. Please upload .txt or .pdf');
                         setLoading(false);
+                        setAnalysisStage('');
                         return;
                     }
                     
                     if (!extractedText || extractedText.trim().length < 50) {
                         setJobDescriptionParseError('Could not extract enough text from the file.');
                         setLoading(false);
+                        setAnalysisStage('');
                         return;
                     }
                     
+                    setAnalysisStage('Finalizing job description...');
                     setJobDescriptionText(extractedText);
                     
                     if (window.amplitude && jdPdfHealth) {
@@ -1168,10 +1189,13 @@
                         });
                     }
                     
+                    setAnalysisStage('');
+                    setLoading(false);
+                    
                 } catch (error) {
                     setJobDescriptionParseError(error.message);
-                } finally {
                     setLoading(false);
+                    setAnalysisStage('');
                 }
             };
 
@@ -1180,6 +1204,9 @@
                 return `veritas_result_${btoa(text.substring(0, 500))}`;
             };
 
+            // ============================================================
+            // ANALYZE RESUME (WITH PROGRESSIVE STAGES)
+            // ============================================================
             const analyzeResume = async () => {
                 if (!resumeText.trim()) {
                     alert('Please provide resume text or upload a file.');
@@ -1209,10 +1236,7 @@
                 setLoading(true);
                 setResult(null);
                 
-                // ============================================================
-                // PROGRESSIVE LOADING UI (V8.1.1 NEW)
-                // ============================================================
-                setAnalysisStage('Parsing resume structure...');
+                setAnalysisStage('Preparing analysis...');
 
                 if (window.amplitude) {
                     amplitude.track('Resume Analysis Started', {
