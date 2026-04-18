@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ATS Resume Scanner | JKH Consulting</title>
+    <title>ATS Resume Scanner V8.2 | JKH Consulting</title>
     <meta name="description" content="Get your resume scored by an AI-powered ATS scanner. Instant feedback on formatting, keywords, and what recruiters actually see.">
     
     <!-- Google Analytics -->
@@ -81,6 +81,10 @@
         .risk-low { background: #d1fae5; color: #065f46; }
         .risk-medium { background: #fed7aa; color: #9b2c1d; }
         .risk-high { background: #fee2e2; color: #991b1b; }
+        .dealbreaker-box { background: #fef2f2; border: 2px solid #ef4444; border-radius: 16px; padding: 20px; margin: 20px 0; }
+        .dealbreaker-box h4 { color: #991b1b; margin-bottom: 10px; }
+        .warning-box { background: #fffbeb; border-left: 4px solid #f59e0b; border-radius: 8px; padding: 16px; margin: 15px 0; }
+        .info-box { background: #eff6ff; border-left: 4px solid #3b82f6; border-radius: 8px; padding: 16px; margin: 15px 0; }
         .pdf-health-critical { background: #fef2f2; border: 2px solid #ef4444; border-radius: 16px; padding: 24px; margin: 20px 0; }
         .pdf-health-critical h3 { color: #991b1b; margin-bottom: 12px; }
         .pdf-health-good { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 16px; padding: 20px; margin: 20px 0; }
@@ -158,6 +162,9 @@
         .grammar-item, .missing-tool-item, .rewrite-item, .weak-metric-item { background: white; padding: 12px; margin: 10px 0; border-radius: 8px; border-left: 4px solid #667eea; }
         .error-type { font-size: 11px; font-weight: 600; text-transform: uppercase; margin-bottom: 5px; }
         .industry-badge { display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; background: #e0f2fe; color: #0369a1; margin-left: 10px; }
+        .level-gap-badge { display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; background: #fee2e2; color: #991b1b; margin-left: 10px; }
+        .structure-summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 15px; }
+        .structure-card { background: white; border-radius: 12px; padding: 15px; text-align: center; }
         @media (max-width: 768px) {
             .dual-input-grid { grid-template-columns: 1fr; }
             .results-grid { grid-template-columns: 1fr; }
@@ -166,6 +173,7 @@
             .score-grid { grid-template-columns: repeat(2, 1fr); }
             .semantic-stats { grid-template-columns: repeat(2, 1fr); }
             .bloom-stats { grid-template-columns: repeat(2, 1fr); }
+            .structure-summary { grid-template-columns: 1fr; }
         }
     </style>
 </head>
@@ -177,7 +185,8 @@
 
         // Worker URLs
         const STANDARD_WORKER_URL = "https://ats-resume-only.keron62.workers.dev";
-        const COMPARE_WORKER_URL = "https://ats-proxy.keron62.workers.dev";
+        const COMPARE_WORKER_URL = "https://ats-compare-proxy.keron62.workers.dev";
+        const PARSER_WORKER_URL = "https://ats-parser.keron62.workers.dev";
 
         function ATSScanner() {
             // Core state
@@ -527,11 +536,21 @@
                     
                 } catch (error) {
                     setJobDescriptionParseError(error.message);
+                    if (window.amplitude) {
+                        amplitude.track('JD Upload Error', {
+                            error_message: error.message,
+                            file_type: file.type
+                        });
+                    }
                     setLoading(false);
                     setAnalysisStage('');
                 }
             };
 
+            // ============================================================
+            // ANALYZE RESUME WITH 3-STAGE PIPELINE
+            // ============================================================
+            
             const analyzeResume = async () => {
                 if (!resumeText.trim()) {
                     alert('Please provide resume text or upload a file.');
@@ -543,6 +562,7 @@
                     return;
                 }
 
+                // Rate limiting: 5 seconds between analyses
                 const now = Date.now();
                 if (now - lastAnalysisTime < 5000 && lastAnalysisTime !== 0) {
                     alert('Please wait 5 seconds between analyses.');
@@ -564,21 +584,45 @@
                 }
 
                 try {
+                    // STEP 1: Call Stage 1 Worker to parse resume
+                    setAnalysisStage('Parsing resume structure (Stage 1)...');
+                    
+                    const parserResponse = await fetch(PARSER_WORKER_URL, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            resumeText: resumeText,
+                            resumePdfHealth: resumePdfHealth
+                        })
+                    });
+
+                    const parserData = await parserResponse.json();
+
+                    if (parserData.error) {
+                        throw new Error(parserData.error);
+                    }
+
+                    const structuredResume = parserData.resume;
+                    const pdfHealth = parserData.pdfHealth;
+
+                    // STEP 2: Call Stage 2 Worker with structured resume
+                    setAnalysisStage('Analyzing with AI (Stage 2)...');
+                    
                     const workerUrl = isComparisonMode ? COMPARE_WORKER_URL : STANDARD_WORKER_URL;
-                    
-                    setAnalysisStage('Sending to analysis engine...');
-                    
+
                     const payload = isComparisonMode 
                         ? { 
                             resumeText: resumeText,
-                            jobDescriptionText: jobDescriptionText,
-                            structureMetadata: resumeStructure
+                            resume: structuredResume,
+                            resumePdfHealth: pdfHealth,
+                            jobDescriptionText: jobDescriptionText 
                           }
                         : { 
                             resumeText: resumeText,
-                            structureMetadata: resumeStructure
+                            resume: structuredResume,
+                            resumePdfHealth: pdfHealth
                           };
-                    
+
                     const response = await fetch(workerUrl, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
@@ -598,7 +642,7 @@
                         jsonText = jsonText.replace(/```json\n?/g, '').replace(/```\n?/g, '');
                         const parsedResult = JSON.parse(jsonText);
                         
-                        parsedResult.pdf_health = resumePdfHealth;
+                        parsedResult.pdf_health = pdfHealth;
                         setResult(parsedResult);
                         
                         if (window.amplitude) {
@@ -607,7 +651,9 @@
                                 credibility_score: parsedResult.credibility_score,
                                 fit_score: parsedResult.fit_score,
                                 semantic_score: parsedResult.semantic_analysis?.position_score,
-                                mode: isComparisonMode ? 'comparison' : 'standard'
+                                mode: isComparisonMode ? 'comparison' : 'standard',
+                                level_gap_penalty_applied: parsedResult.level_gap_penalty_applied || false,
+                                dealbreaker_applied: !!parsedResult.dealbreaker_note
                             });
                         }
                     } else {
@@ -619,6 +665,7 @@
                     if (window.amplitude) {
                         amplitude.track('Resume Analysis Error', {
                             error_message: error.message,
+                            error_stack: error.stack,
                             resume_length: resumeText.length,
                             mode: isComparisonMode ? 'comparison' : 'standard'
                         });
@@ -797,11 +844,13 @@
                 return null;
             };
 
+            // Render PDF Health Section with Structure Summary
             const renderPdfHealthSection = (isCritical) => {
                 if (!resumePdfHealth?.issues || resumePdfHealth.issues.length === 0) return null;
                 
                 const score = getPdfHealthScore();
                 const label = getPdfHealthLabel();
+                const structure = resumePdfHealth.structure;
                 
                 const containerClass = isCritical ? 'pdf-health-critical' : 'pdf-health-good';
                 
@@ -813,14 +862,45 @@
                             {isCritical && ' — Fix these issues before submitting your resume.'}
                         </p>
                         
-                        {/* Structure Summary (V8.2 NEW) */}
-                        {resumePdfHealth.structure && (
+                        {/* Structure Summary - New for V8.2 */}
+                        {structure && (
+                            <div className="structure-summary">
+                                <div className="structure-card">
+                                    <div>📄</div>
+                                    <div><strong>{structure.pageCount}</strong></div>
+                                    <div style={{ fontSize: '12px', color: '#6b7280' }}>Pages</div>
+                                </div>
+                                <div className="structure-card">
+                                    <div>{structure.hasMultiColumn ? '📰' : '✅'}</div>
+                                    <div><strong>{structure.hasMultiColumn ? 'Multi-Column' : 'Single Column'}</strong></div>
+                                    <div style={{ fontSize: '12px', color: '#6b7280' }}>Layout</div>
+                                </div>
+                                <div className="structure-card">
+                                    <div>{structure.mainTitle ? '👤' : '❓'}</div>
+                                    <div><strong>{structure.mainTitle?.text || 'Not detected'}</strong></div>
+                                    <div style={{ fontSize: '12px', color: '#6b7280' }}>Main Title</div>
+                                </div>
+                                <div className="structure-card">
+                                    <div>📖</div>
+                                    <div><strong>{structure.readability?.score || 'Unknown'}</strong></div>
+                                    <div style={{ fontSize: '12px', color: '#6b7280' }}>Readability</div>
+                                </div>
+                                {structure.resumeBuilder?.detected && (
+                                    <div className="structure-card">
+                                        <div>🏗️</div>
+                                        <div><strong>{structure.resumeBuilder.name}</strong></div>
+                                        <div style={{ fontSize: '12px', color: '#6b7280' }}>Resume Builder</div>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+                        
+                        {/* Detected Section Headers */}
+                        {structure?.sectionHeaders && structure.sectionHeaders.length > 0 && (
                             <div className="pdf-issue low" style={{ marginBottom: '15px' }}>
-                                <div className="pdf-issue-header">📊 Document Structure Analysis</div>
+                                <div className="pdf-issue-header">📋 Detected Sections</div>
                                 <div className="pdf-issue-fix">
-                                    Pages: {resumePdfHealth.structure.pageCount} | 
-                                    Readability: {resumePdfHealth.structure.readability?.score || 'Unknown'} |
-                                    Main Title: {resumePdfHealth.structure.mainTitle?.text || 'Not detected'}
+                                    {structure.sectionHeaders.slice(0, 5).map(h => h.normalized).join(' • ')}
                                 </div>
                             </div>
                         )}
@@ -838,10 +918,68 @@
                             );
                         })}
                         
-                        {resumePdfHealth.structure?.missingHeaders?.length > 0 && (
+                        {structure?.missingHeaders?.length > 0 && (
                             <div className="pdf-issue medium">
                                 <div className="pdf-issue-header">📋 Missing Standard Sections</div>
-                                <div className="pdf-issue-fix">Consider adding: {resumePdfHealth.structure.missingHeaders.join(', ')}</div>
+                                <div className="pdf-issue-fix">Consider adding: {structure.missingHeaders.join(', ')}</div>
+                            </div>
+                        )}
+                    </div>
+                );
+            };
+
+            // Render JD Comparison Specific Warnings (New for V8.2)
+            const renderJDComparisonWarnings = () => {
+                if (!isComparisonMode || !result) return null;
+                
+                return (
+                    <div>
+                        {/* Dealbreaker Logic - Highest Priority */}
+                        {result.dealbreaker_note && (
+                            <div className="dealbreaker-box">
+                                <h4>🔴 DEALBREAKER DETECTED</h4>
+                                <p>{result.dealbreaker_note}</p>
+                                <p style={{ marginTop: '10px', fontSize: '13px', fontWeight: 'bold' }}>
+                                    Your Fit Score has been capped at 40.
+                                </p>
+                            </div>
+                        )}
+                        
+                        {/* Level Gap Penalty */}
+                        {result.level_gap_penalty_applied && result.level_gap_note && (
+                            <div className="warning-box">
+                                <strong>⚠️ LEVEL GAP PENALTY APPLIED</strong>
+                                <p style={{ marginTop: '8px' }}>{result.level_gap_note}</p>
+                                <p style={{ marginTop: '8px', fontSize: '13px', color: '#9b2c1d' }}>
+                                    Fit Score has been reduced due to level mismatch.
+                                </p>
+                            </div>
+                        )}
+                        
+                        {/* Years Requirement Penalty */}
+                        {result.years_requirement_penalty_applied && result.years_requirement_note && (
+                            <div className="warning-box">
+                                <strong>📅 YEARS REQUIREMENT PENALTY</strong>
+                                <p style={{ marginTop: '8px' }}>{result.years_requirement_note}</p>
+                            </div>
+                        )}
+                        
+                        {/* Overqualification Detection */}
+                        {result.overqualification_note && (
+                            <div className="info-box">
+                                <strong>🎯 OVERQUALIFICATION DETECTED</strong>
+                                <p style={{ marginTop: '8px' }}>{result.overqualification_note}</p>
+                                <p style={{ marginTop: '8px', fontSize: '13px' }}>
+                                    Consider applying for Senior or Manager-level roles instead.
+                                </p>
+                            </div>
+                        )}
+                        
+                        {/* Role-Weighted Metric Expectations */}
+                        {result.role_weighted_note && (
+                            <div className="info-box">
+                                <strong>📊 ROLE-WEIGHTED EXPECTATIONS</strong>
+                                <p style={{ marginTop: '8px' }}>{result.role_weighted_note}</p>
                             </div>
                         )}
                     </div>
@@ -851,7 +989,7 @@
             return (
                 <div className="container">
                     <div className="header">
-                        <h1>🎯 ATS Resume Scanner</h1>
+                        <h1>🎯 ATS Resume Scanner V8.2</h1>
                         <p>AI-powered analysis of formatting, keywords, and recruiter psychology</p>
                     </div>
 
@@ -930,6 +1068,9 @@
                         {result && (
                             <div className="results-container">
                                 {result.fallback_used && <div className="fallback-note">ℹ️ {result.fallback_note || `Analysis completed using ${result.model_used} due to high demand. Quality unchanged.`}</div>}
+
+                                {/* JD Comparison Warnings - New for V8.2 */}
+                                {renderJDComparisonWarnings()}
 
                                 <div className="score-grid">
                                     <div className="score-card"><h4>ATS Score</h4><div className="score-value" style={{ color: result.total_ats_score >= 90 ? '#10b981' : result.total_ats_score >= 80 ? '#3b82f6' : result.total_ats_score >= 70 ? '#f59e0b' : '#ef4444' }}>{result.total_ats_score}</div><div className="score-label">/100 ({getScoreGrade(result.total_ats_score)})</div></div>
