@@ -31,7 +31,7 @@
     <!-- Contentsquare (Hotjar) Tracking -->
     <script src="https://t.contentsquare.net/uxa/5f94e8837c5a5.js"></script>
     
-    <!-- PDF.js Library for PDF Parsing -->
+    <!-- PDF.js Library for PDF Parsing (Health Detection & Fallback) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
     <script>
         pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
@@ -205,7 +205,6 @@
             const [resumeFileName, setResumeFileName] = useState('');
             const [resumeParseError, setResumeParseError] = useState(null);
             const [resumePdfHealth, setResumePdfHealth] = useState(null);
-            const [resumeStructure, setResumeStructure] = useState(null);
             const [jobDescriptionText, setJobDescriptionText] = useState('');
             const [jobDescriptionFileName, setJobDescriptionFileName] = useState('');
             const [jobDescriptionParseError, setJobDescriptionParseError] = useState(null);
@@ -266,7 +265,89 @@
             };
 
             // ============================================================
-            // PDF STRUCTURE DETECTION
+            // PDF TO BASE64 CONVERTER
+            // ============================================================
+            
+            const pdfToBase64 = (file) => {
+                return new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onload = () => {
+                        const base64 = reader.result.split(',')[1];
+                        resolve(base64);
+                    };
+                    reader.onerror = reject;
+                    reader.readAsDataURL(file);
+                });
+            };
+
+            // ============================================================
+            // AZURE DOCUMENT INTELLIGENCE EXTRACTION (Primary)
+            // ============================================================
+            
+            const extractWithAzure = async (file) => {
+                const formData = new FormData();
+                formData.append('file', file);
+                
+                const response = await fetch(`${PARSER_WORKER_URL}/azure`, {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const data = await response.json();
+                
+                if (data.success && data.text && data.text.length > 100) {
+                    return { text: data.text, method: 'azure', confidence: data.confidence || 95 };
+                }
+                throw new Error(data.error || 'Azure extraction failed');
+            };
+
+            // ============================================================
+            // PDF.JS WITH LAYOUT SORTING (Fallback)
+            // ============================================================
+            
+            const extractWithPDFjsLayout = async (file) => {
+                const arrayBuffer = await file.arrayBuffer();
+                const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+                
+                let allItems = [];
+                
+                for (let i = 1; i <= pdf.numPages; i++) {
+                    const page = await pdf.getPage(i);
+                    const viewport = page.getViewport({ scale: 1 });
+                    const textContent = await page.getTextContent();
+                    
+                    const pageItems = textContent.items.map(item => ({
+                        text: item.str,
+                        x: item.transform[4],
+                        y: viewport.height - item.transform[5],
+                        page: i
+                    }));
+                    
+                    allItems = allItems.concat(pageItems);
+                }
+                
+                // Sort by Y (top to bottom), then X (left to right)
+                const sorted = allItems.sort((a, b) => {
+                    if (Math.abs(a.y - b.y) < 10) return a.x - b.x;
+                    return a.y - b.y;
+                });
+                
+                // Reconstruct text with line breaks
+                let text = '';
+                let lastY = null;
+                for (const item of sorted) {
+                    if (lastY !== null && Math.abs(item.y - lastY) > 10) {
+                        text += '\n';
+                    }
+                    text += item.text + ' ';
+                    lastY = item.y;
+                }
+                
+                return { text: text, method: 'pdfjs-layout', confidence: 60 };
+            };
+
+            // ============================================================
+            // PDF STRUCTURE DETECTION (Health Only - Keep Existing)
             // ============================================================
             
             const detectResumeBuilder = (metadata) => {
@@ -379,7 +460,7 @@
                 return { avgWordsPerSentence: Math.round(avgWordsPerSentence * 10) / 10, score };
             };
 
-            const analyzePdfStructure = async (pdf, fileSize) => {
+            const analyzePdfHealth = async (pdf, fileSize) => {
                 const metadata = await pdf.getMetadata();
                 const numPages = pdf.numPages;
                 const page = await pdf.getPage(1);
@@ -401,14 +482,6 @@
                 const extractedText = textContent.items.map(item => item.str).join(' ');
                 const readability = calculateReadabilityScore(extractedText);
                 
-                const coordinates = textContent.items.map(item => ({
-                    text: item.str,
-                    x: item.transform[4],
-                    y: item.transform[5],
-                    width: item.width,
-                    height: item.height
-                }));
-                
                 const issues = [];
                 if (isMultiColumn) issues.push({ type: 'multi_column', severity: 'high', message: 'Multi-column layout detected', fix: 'Convert to single-column format for ATS compatibility' });
                 if (headers.length > 0) issues.push({ type: 'headers_detected', severity: 'medium', message: 'Text detected in header area', fix: 'Move contact information to the body of your resume' });
@@ -425,14 +498,17 @@
                     missingHeaders: missingHeaders,
                     fontMetrics: fontMetrics,
                     readability: readability,
-                    resumeBuilder: resumeBuilder,
-                    coordinates: coordinates
+                    resumeBuilder: resumeBuilder
                 };
                 
-                return { issues, structureMetadata, extractedText };
+                return { issues, structureMetadata };
             };
 
-            const parsePDF = async (file) => {
+            // ============================================================
+            // SIMPLE PDF.JS FOR JD EXTRACTION (Keep simple)
+            // ============================================================
+            
+            const parsePDFsimple = async (file) => {
                 return new Promise((resolve, reject) => {
                     const reader = new FileReader();
                     reader.onload = async function(e) {
@@ -441,33 +517,14 @@
                             const pdf = await pdfjsLib.getDocument(typedarray).promise;
                             
                             let fullText = '';
-                            let allCoordinates = [];
-                            
                             for (let i = 1; i <= pdf.numPages; i++) {
                                 const page = await pdf.getPage(i);
-                                const textContent = await page.getTextContent({ normalizeWhitespace: true, disableCombineTextItems: false });
+                                const textContent = await page.getTextContent();
                                 const pageText = textContent.items.map(item => item.str).join(' ');
                                 fullText += pageText + '\n';
-                                
-                                const pageCoordinates = textContent.items.map(item => ({
-                                    text: item.str,
-                                    x: item.transform[4],
-                                    y: item.transform[5],
-                                    page: i
-                                }));
-                                allCoordinates = allCoordinates.concat(pageCoordinates);
                             }
                             
-                            const structureAnalysis = await analyzePdfStructure(pdf, file.size);
-                            
-                            resolve({ 
-                                fullText, 
-                                pdf, 
-                                structureIssues: structureAnalysis.issues,
-                                structureMetadata: structureAnalysis.structureMetadata,
-                                extractedText: structureAnalysis.extractedText,
-                                coordinates: allCoordinates
-                            });
+                            resolve({ fullText, pdf });
                         } catch (error) {
                             reject(new Error('Failed to parse PDF: ' + error.message));
                         }
@@ -478,7 +535,7 @@
             };
 
             // ============================================================
-            // FILE UPLOAD HANDLER
+            // FILE UPLOAD HANDLER (Resume - Azure Primary, pdf.js Fallback)
             // ============================================================
             
             const handleResumeFileUpload = async (e) => {
@@ -488,91 +545,98 @@
                 setResumeFileName(file.name);
                 setResumeParseError(null);
                 setLoading(true);
-                setAnalysisStage('Analyzing PDF structure...');
+                setAnalysisStage('Extracting text from PDF...');
 
                 try {
                     let extractedText = '';
                     let pdfHealth = null;
-                    let structureMetadata = null;
-                    let pdfCoordinates = null;
+                    let extractionMethod = '';
+                    let extractionConfidence = 0;
                     
                     if (file.type === 'text/plain') {
-                        setAnalysisStage('Reading text file...');
                         const reader = new FileReader();
                         extractedText = await new Promise((resolve, reject) => {
                             reader.onload = (event) => resolve(event.target.result);
                             reader.onerror = () => reject(new Error('Failed to read text file'));
                             reader.readAsText(file);
                         });
-                        setAnalysisStage('Processing text...');
+                        extractionMethod = 'plain-text';
+                        extractionConfidence = 100;
                     } else if (file.type === 'application/pdf') {
-                        setAnalysisStage('Parsing PDF structure...');
-                        const { fullText, structureIssues, structureMetadata: metadata, extractedText: structuredText, coordinates } = await parsePDF(file);
-                        setAnalysisStage('Extracting text from PDF...');
-                        extractedText = fullText;
-                        structureMetadata = metadata;
-                        pdfCoordinates = coordinates;
+                        // Step 1: Try Azure Document Intelligence
+                        try {
+                            setAnalysisStage('Extracting with Azure Document Intelligence...');
+                            const result = await extractWithAzure(file);
+                            extractedText = result.text;
+                            extractionMethod = result.method;
+                            extractionConfidence = result.confidence;
+                            console.log(`✅ Azure extraction successful (${extractedText.length} chars, confidence: ${extractionConfidence})`);
+                        } catch (azureError) {
+                            console.warn('Azure failed, falling back to pdf.js layout:', azureError);
+                            setAnalysisStage('Azure failed, using pdf.js layout...');
+                            
+                            // Step 2: Fallback to pdf.js with layout sorting
+                            const fallbackResult = await extractWithPDFjsLayout(file);
+                            extractedText = fallbackResult.text;
+                            extractionMethod = fallbackResult.method;
+                            extractionConfidence = fallbackResult.confidence;
+                            console.log(`✅ pdf.js layout fallback successful (${extractedText.length} chars, confidence: ${extractionConfidence})`);
+                        }
                         
+                        // Step 3: Get PDF health (always using pdf.js)
+                        setAnalysisStage('Analyzing PDF health...');
+                        const { pdf, fullText } = await parsePDFsimple(file);
+                        const healthData = await analyzePdfHealth(pdf, file.size);
                         pdfHealth = {
-                            pageCount: structureMetadata.pageCount,
-                            creator: structureMetadata.resumeBuilder?.creator,
-                            issues: structureIssues,
-                            structure: structureMetadata,
+                            pageCount: healthData.structureMetadata?.pageCount || 1,
+                            issues: healthData.issues || [],
+                            structure: healthData.structureMetadata,
                             textLength: extractedText.length,
                             fileSize: file.size,
-                            coordinates: coordinates
+                            extractionMethod: extractionMethod,
+                            extractionConfidence: extractionConfidence
                         };
                         
-                        if (structureMetadata.hasMultiColumn) {
-                            console.warn('Multi-column layout detected - ATS may misread');
-                        }
                     } else {
                         setResumeParseError('Unsupported file type. Please upload .txt or .pdf');
                         setLoading(false);
-                        setAnalysisStage('');
                         return;
                     }
                     
                     if (!extractedText || extractedText.trim().length < 50) {
                         setResumeParseError('Could not extract enough text from the file. Try pasting as text.');
                         setLoading(false);
-                        setAnalysisStage('');
                         return;
                     }
                     
                     setResumeText(extractedText);
                     setResumePdfHealth(pdfHealth);
-                    setResumeStructure(structureMetadata);
+                    setAnalysisStage('');
+                    setLoading(false);
                     
                     if (window.amplitude) {
                         amplitude.track('File Uploaded', {
                             file_type: file.type,
                             file_size: file.size,
                             text_length: extractedText.length,
-                            pdf_issues: pdfHealth?.issues?.length || 0,
-                            has_multi_column: structureMetadata?.hasMultiColumn || false,
-                            resume_builder: structureMetadata?.resumeBuilder?.name || null
+                            extraction_method: extractionMethod,
+                            extraction_confidence: extractionConfidence,
+                            pdf_issues: pdfHealth?.issues?.length || 0
                         });
                     }
-                    
-                    setAnalysisStage('');
-                    setLoading(false);
                     
                 } catch (error) {
                     console.error('Upload error:', error);
                     setResumeParseError(error.message);
-                    if (window.amplitude) {
-                        amplitude.track('File Upload Error', {
-                            error_message: error.message,
-                            file_type: file.type,
-                            file_size: file.size
-                        });
-                    }
                     setLoading(false);
                     setAnalysisStage('');
                 }
             };
 
+            // ============================================================
+            // FILE UPLOAD HANDLER (Job Description - Simple PDF.js)
+            // ============================================================
+            
             const handleJobDescriptionFileUpload = async (e) => {
                 const file = e.target.files[0];
                 if (!file) return;
@@ -592,7 +656,7 @@
                             reader.readAsText(file);
                         });
                     } else if (file.type === 'application/pdf') {
-                        const { fullText } = await parsePDF(file);
+                        const { fullText } = await parsePDFsimple(file);
                         extractedText = fullText;
                     } else {
                         setJobDescriptionParseError('Unsupported file type. Please upload .txt or .pdf');
@@ -614,19 +678,13 @@
                     
                 } catch (error) {
                     setJobDescriptionParseError(error.message);
-                    if (window.amplitude) {
-                        amplitude.track('JD Upload Error', {
-                            error_message: error.message,
-                            file_type: file.type
-                        });
-                    }
                     setLoading(false);
                     setAnalysisStage('');
                 }
             };
 
             // ============================================================
-            // ANALYZE RESUME WITH CONFIDENCE-BASED FALLBACK
+            // ANALYZE RESUME (Direct to Stage 2 - No Parser)
             // ============================================================
             
             const analyzeResume = async () => {
@@ -649,111 +707,30 @@
                 
                 setLoading(true);
                 setResult(null);
-                setAnalysisStage('Preparing analysis...');
+                setAnalysisStage('Analyzing with AI...');
 
                 if (window.amplitude) {
                     amplitude.track('Resume Analysis Started', {
                         mode: isComparisonMode ? 'comparison' : 'standard',
                         timestamp: new Date().toISOString(),
                         resume_length: resumeText.length,
-                        has_structure: !!resumeStructure
+                        extraction_method: resumePdfHealth?.extractionMethod || 'unknown'
                     });
                 }
 
                 try {
-                    let structuredResume = null;
-                    let pdfHealth = null;
-                    let useRawTextFallback = false;
-                    
-                    // STEP 1: Call Stage 1 Worker to parse resume
-                    setAnalysisStage('Parsing resume structure (Stage 1)...');
-                    
-                    const parserPayload = {
-                        resumeText: resumeText,
-                        resumePdfHealth: resumePdfHealth
-                    };
-                    
-                    if (resumePdfHealth?.coordinates) {
-                        parserPayload.pdfCoordinates = resumePdfHealth.coordinates;
-                        console.log('✅ Sending PDF coordinates for multi-column reconstruction');
-                    }
-                    
-                    const parserResponse = await fetch(PARSER_WORKER_URL, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(parserPayload)
-                    });
-
-                    const parserData = await parserResponse.json();
-
-                    if (parserData.error) {
-                        console.warn('Parser error, using raw text fallback:', parserData.error);
-                        useRawTextFallback = true;
-                        pdfHealth = resumePdfHealth;
-                    } else {
-                        // CONFIDENCE-BASED FALLBACK: If confidence < 50, bypass structured resume
-                        const confidence = parserData.parsing_confidence || 0;
-                        console.log('📊 Parsing confidence:', confidence);
-                        
-                        if (confidence < 50) {
-                            console.log('⚠️ Low parsing confidence (' + confidence + '), using raw text fallback');
-                            useRawTextFallback = true;
-                            pdfHealth = resumePdfHealth;
-                            setAnalysisStage('Low parsing confidence, using raw text analysis...');
-                        } else {
-                            structuredResume = {
-                                parsed: true,
-                                header: parserData.header || {},
-                                summary: parserData.summary || "",
-                                experience: parserData.experience || [],
-                                skills: parserData.skills || [],
-                                education: parserData.education || {},
-                                total_years_experience: parserData.total_years_experience || 0,
-                                detected_level: parserData.detected_level || "Unknown"
-                            };
-                            pdfHealth = parserData.pdfHealth || resumePdfHealth;
-                            console.log('✅ Optimized path active - using structured resume');
-                            console.log('📊 Experience found:', structuredResume.experience?.length);
-                            console.log('📊 Total years:', structuredResume.total_years_experience);
-                            setAnalysisStage(`Structured resume prepared (${structuredResume.experience?.length || 0} jobs found)...`);
-                        }
-                    }
-
-                    // STEP 2: Call Stage 2 Worker
-                    setAnalysisStage('Analyzing with AI (Stage 2)...');
-                    
                     const workerUrl = isComparisonMode ? COMPARE_WORKER_URL : STANDARD_WORKER_URL;
 
-                    let payload;
-                    if (useRawTextFallback || !structuredResume) {
-                        // Raw text fallback - send only resumeText
-                        payload = isComparisonMode 
-                            ? { 
-                                resumeText: resumeText,
-                                resumePdfHealth: pdfHealth,
-                                jobDescriptionText: jobDescriptionText 
-                              }
-                            : { 
-                                resumeText: resumeText,
-                                resumePdfHealth: pdfHealth
-                              };
-                        console.log('📤 Sending raw text to Stage 2 (fallback mode)');
-                    } else {
-                        // Optimized path - send structured resume
-                        payload = isComparisonMode 
-                            ? { 
-                                resumeText: resumeText,
-                                resume: structuredResume,
-                                resumePdfHealth: pdfHealth,
-                                jobDescriptionText: jobDescriptionText 
-                              }
-                            : { 
-                                resumeText: resumeText,
-                                resume: structuredResume,
-                                resumePdfHealth: pdfHealth
-                              };
-                        console.log('📤 Sending structured resume to Stage 2 (optimized mode)');
-                    }
+                    const payload = isComparisonMode 
+                        ? { 
+                            resumeText: resumeText,
+                            resumePdfHealth: resumePdfHealth,
+                            jobDescriptionText: jobDescriptionText 
+                          }
+                        : { 
+                            resumeText: resumeText,
+                            resumePdfHealth: resumePdfHealth
+                          };
 
                     const response = await fetch(workerUrl, {
                         method: 'POST',
@@ -774,11 +751,7 @@
                         jsonText = (jsonText || '').replace(/```json\n?/g, '').replace(/```\n?/g, '');
                         const parsedResult = JSON.parse(jsonText);
                         
-                        parsedResult.pdf_health = pdfHealth;
-                        if (useRawTextFallback) {
-                            parsedResult.fallback_note = "Analysis completed using raw text due to low parsing confidence. Quality unchanged.";
-                            parsedResult.fallback_used = true;
-                        }
+                        parsedResult.pdf_health = resumePdfHealth;
                         setResult(parsedResult);
                         
                         if (window.amplitude) {
@@ -786,9 +759,7 @@
                                 total_score: parsedResult.total_ats_score,
                                 credibility_score: parsedResult.credibility_score,
                                 fit_score: parsedResult.fit_score,
-                                semantic_score: parsedResult.semantic_analysis?.position_score,
-                                mode: isComparisonMode ? 'comparison' : 'standard',
-                                used_raw_text_fallback: useRawTextFallback
+                                mode: isComparisonMode ? 'comparison' : 'standard'
                             });
                         }
                     } else {
@@ -800,7 +771,6 @@
                     if (window.amplitude) {
                         amplitude.track('Resume Analysis Error', {
                             error_message: error.message,
-                            error_stack: error.stack,
                             resume_length: resumeText.length,
                             mode: isComparisonMode ? 'comparison' : 'standard'
                         });
@@ -988,6 +958,12 @@
                 
                 const containerClass = isCritical ? 'pdf-health-critical' : 'pdf-health-good';
                 
+                const extractionNote = resumePdfHealth.extractionMethod === 'azure' 
+                    ? '✅ Text extracted via Azure Document Intelligence (high accuracy)'
+                    : resumePdfHealth.extractionMethod === 'pdfjs-layout'
+                    ? '⚠️ Text extracted via pdf.js layout (fallback mode)'
+                    : null;
+                
                 return (
                     <div className={containerClass}>
                         <h3>{isCritical ? '⚠️ CRITICAL PDF HEALTH ISSUES' : '📄 PDF Health Report'}</h3>
@@ -995,6 +971,12 @@
                             <strong>Score: {score}/100 ({label})</strong>
                             {isCritical && ' — Fix these issues before submitting your resume.'}
                         </p>
+                        
+                        {extractionNote && (
+                            <div className="info-box" style={{ marginBottom: '15px', fontSize: '13px', padding: '8px 12px' }}>
+                                {extractionNote}
+                            </div>
+                        )}
                         
                         <div className="info-box" style={{ marginBottom: '15px', fontSize: '13px' }}>
                             <strong>ℹ️ About PDF Health Score</strong><br/>
@@ -1380,7 +1362,7 @@
                                 {renderRemoteReadiness()}
 
                                 {result.breakdown && (<div className="results-section" style={{ marginTop: '20px' }}><h3>📊 Score Breakdown</h3><table className="issues-table"><thead><tr><th>Category</th><th>Score</th><th>Max</th></tr></thead><tbody>
-                                    <tr><td>Header & Contact</td><td>{result.breakdown.header_contact || 0}</td><td>10</td></tr>
+                                    <tr><td>Header & Contact</td>了一般{result.breakdown.header_contact || 0}</td><td>10</td></tr>
                                     <tr><td>Keyword Density</td><td>{result.breakdown.keyword_density || 0}</td><td>20</td></tr>
                                     <tr><td>Quantified Results</td><td>{result.breakdown.quantified_results || 0}</td><td>20</td></tr>
                                     <tr><td>Action Verbs</td><td>{result.breakdown.action_verbs || 0}</td><td>15</td></tr>
@@ -1391,18 +1373,13 @@
                                     {result.breakdown.recruiter_scan_penalty !== undefined && <tr><td>Recruiter Scan Penalty</td><td>{result.breakdown.recruiter_scan_penalty}</td><td>0</td></tr>}
                                     {result.breakdown.buzzword_repetition_penalty !== undefined && <tr><td>Buzzword/Repetition Penalty</td><td>{result.breakdown.buzzword_repetition_penalty}</td><td>0</td></tr>}
                                 </tbody>
-                                </table>
-                                </div>)}
+                            </table>
+                        </div>)}
 
-                                <div className="email-capture"><h3>📧 Get Your Full Report</h3><p>Enter your email to receive a detailed PDF with all findings, personalized recommendations, and a complete action plan.</p>{!emailSent ? (<div className="email-input"><input type="email" placeholder="your.email@example.com" value={email} onChange={(e) => setEmail(e.target.value)} /><button onClick={handleEmailSubmit}>Send Full Report</button></div>) : (<p style={{ color: '#10b981', fontWeight: 'bold' }}>✅ Full report will be sent to {email}</p>)}</div>
+                        <div className="email-capture"><h3>📧 Get Your Full Report</h3><p>Enter your email to receive a detailed PDF with all findings, personalized recommendations, and a complete action plan.</p>{!emailSent ? (<div className="email-input"><input type="email" placeholder="your.email@example.com" value={email} onChange={(e) => setEmail(e.target.value)} /><button onClick={handleEmailSubmit}>Send Full Report</button></div>) : (<p style={{ color: '#10b981', fontWeight: 'bold' }}>✅ Full report will be sent to {email}</p>)}</div>
 
-                                <button onClick={() => { setResult(null); setResumeText(''); setResumeFileName(''); setResumeParseError(null); setResumePdfHealth(null); setResumeStructure(null); setJobDescriptionText(''); setJobDescriptionFileName(''); setJobDescriptionParseError(null); setEmail(''); setEmailSent(false); setShowCredibilityExplainer(false); setShowSemanticExplainer(false); setShowPositionExplainer(false); setShowCredibilityShortExplainer(false); setShowInterviewExplanation(false); setAnalysisStage(''); }} style={{ marginTop: '30px', background: '#6b7280', width: '100%', padding: '16px', borderRadius: '8px', border: 'none', color: 'white', fontWeight: '600', cursor: 'pointer' }}>Scan Another Resume</button>
-                            </div>
-                        )}
+                        <button onClick={() => { setResult(null); setResumeText(''); setResumeFileName(''); setResumeParseError(null); setResumePdfHealth(null); setJobDescriptionText(''); setJobDescriptionFileName(''); setJobDescriptionParseError(null); setEmail(''); setEmailSent(false); setShowCredibilityExplainer(false); setShowSemanticExplainer(false); setShowPositionExplainer(false); setShowCredibilityShortExplainer(false); setShowInterviewExplanation(false); setAnalysisStage(''); }} style={{ marginTop: '30px', background: '#6b7280', width: '100%', padding: '16px', borderRadius: '8px', border: 'none', color: 'white', fontWeight: '600', cursor: 'pointer' }}>Scan Another Resume</button>
                     </div>
-
-                    <div className="back-link"><a href="https://jkh-consulting.keron62.workers.dev/index.html">← Back to JKH Consulting</a></div>
-                    <div className="privacy-note">🔒 Your resume is sent to a secure proxy for analysis. No data is stored permanently. Analytics help us improve the tool.</div>
                 </div>
             );
         }
