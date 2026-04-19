@@ -31,7 +31,7 @@
     <!-- Contentsquare (Hotjar) Tracking -->
     <script src="https://t.contentsquare.net/uxa/5f94e8837c5a5.js"></script>
     
-    <!-- PDF.js Library for PDF Parsing (Health Detection & Fallback) -->
+    <!-- PDF.js Library for PDF Parsing -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
     <script>
         pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
@@ -199,7 +199,6 @@
         const PARSER_WORKER_URL = "https://ats-parser.keron62.workers.dev";
 
         function ATSScanner() {
-            // Core state
             const [isComparisonMode, setIsComparisonMode] = useState(false);
             const [resumeText, setResumeText] = useState('');
             const [resumeFileName, setResumeFileName] = useState('');
@@ -212,18 +211,13 @@
             const [result, setResult] = useState(null);
             const [email, setEmail] = useState('');
             const [emailSent, setEmailSent] = useState(false);
-            const [showCredibilityExplainer, setShowCredibilityExplainer] = useState(false);
-            const [showSemanticExplainer, setShowSemanticExplainer] = useState(false);
-            const [showPositionExplainer, setShowPositionExplainer] = useState(false);
             const [showCredibilityShortExplainer, setShowCredibilityShortExplainer] = useState(false);
+            const [showPositionExplainer, setShowPositionExplainer] = useState(false);
             const [showInterviewExplanation, setShowInterviewExplanation] = useState(false);
             const [lastAnalysisTime, setLastAnalysisTime] = useState(0);
             const [analysisStage, setAnalysisStage] = useState('');
 
-            // ============================================================
-            // HELPER FUNCTIONS
-            // ============================================================
-            
+            // Helper functions
             const getDispositionRecommendation = (score) => {
                 if (score >= 20 && score <= 25) return { text: "Apply Immediately", class: "recommendation-immediate", icon: "🚀" };
                 if (score >= 15 && score <= 19) return { text: "Strong Yes", class: "recommendation-strong", icon: "✅✅" };
@@ -264,26 +258,7 @@
                 return Math.min(100, score);
             };
 
-            // ============================================================
-            // PDF TO BASE64 CONVERTER
-            // ============================================================
-            
-            const pdfToBase64 = (file) => {
-                return new Promise((resolve, reject) => {
-                    const reader = new FileReader();
-                    reader.onload = () => {
-                        const base64 = reader.result.split(',')[1];
-                        resolve(base64);
-                    };
-                    reader.onerror = reject;
-                    reader.readAsDataURL(file);
-                });
-            };
-
-            // ============================================================
-            // AZURE DOCUMENT INTELLIGENCE EXTRACTION (Primary)
-            // ============================================================
-            
+            // Azure extraction
             const extractWithAzure = async (file) => {
                 const formData = new FormData();
                 formData.append('file', file);
@@ -301,10 +276,7 @@
                 throw new Error(data.error || 'Azure extraction failed');
             };
 
-            // ============================================================
-            // PDF.JS WITH LAYOUT SORTING (Fallback)
-            // ============================================================
-            
+            // pdf.js layout extraction (fallback)
             const extractWithPDFjsLayout = async (file) => {
                 const arrayBuffer = await file.arrayBuffer();
                 const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
@@ -326,19 +298,15 @@
                     allItems = allItems.concat(pageItems);
                 }
                 
-                // Sort by Y (top to bottom), then X (left to right)
                 const sorted = allItems.sort((a, b) => {
                     if (Math.abs(a.y - b.y) < 10) return a.x - b.x;
                     return a.y - b.y;
                 });
                 
-                // Reconstruct text with line breaks
                 let text = '';
                 let lastY = null;
                 for (const item of sorted) {
-                    if (lastY !== null && Math.abs(item.y - lastY) > 10) {
-                        text += '\n';
-                    }
+                    if (lastY !== null && Math.abs(item.y - lastY) > 10) text += '\n';
                     text += item.text + ' ';
                     lastY = item.y;
                 }
@@ -346,168 +314,7 @@
                 return { text: text, method: 'pdfjs-layout', confidence: 60 };
             };
 
-            // ============================================================
-            // PDF STRUCTURE DETECTION (Health Only - Keep Existing)
-            // ============================================================
-            
-            const detectResumeBuilder = (metadata) => {
-                const creator = metadata?.info?.Creator || '';
-                const producer = metadata?.info?.Producer || '';
-                
-                const builders = {
-                    'Canva': 'Canva',
-                    'Novoresume': 'Novoresume',
-                    'Zety': 'Zety',
-                    'Resume.io': 'Resume.io',
-                    'EnhanCV': 'EnhanCV',
-                    'CVMaker': 'CVMaker',
-                    'Wix': 'Wix',
-                    'Adobe Illustrator': 'Adobe Illustrator',
-                    'Microsoft Word': 'Microsoft Word'
-                };
-                
-                for (const [key, name] of Object.entries(builders)) {
-                    if (creator.includes(key) || producer.includes(key)) {
-                        return { detected: true, name: name, creator: creator, isGood: name === 'Microsoft Word' };
-                    }
-                }
-                return { detected: false, name: null, creator: creator, isGood: false };
-            };
-
-            const detectMultiColumn = (textContent) => {
-                const xPositions = textContent.items.map(item => item.transform[4]);
-                const uniqueX = [...new Set(xPositions.map(x => Math.round(x / 50) * 50))];
-                return uniqueX.length > 3 && textContent.items.length > 20;
-            };
-
-            const detectHeadersByPosition = (textContent, pageHeight) => {
-                const headerItems = textContent.items.filter(item => item.transform[5] < pageHeight * 0.15);
-                return headerItems.map(item => item.str.trim()).filter(t => t && t.length > 0);
-            };
-
-            const getFontMetrics = (textContent) => {
-                const heights = textContent.items.map(item => item.height).filter(h => h > 0);
-                if (heights.length === 0) return { avgSize: 0, maxSize: 0, minSize: 0 };
-                const avgSize = heights.reduce((a, b) => a + b, 0) / heights.length;
-                const maxSize = Math.max(...heights);
-                const minSize = Math.min(...heights);
-                return { avgSize, maxSize, minSize };
-            };
-
-            const detectMainTitle = (textContent, fontMetrics) => {
-                const largestItems = textContent.items.filter(item => item.height > fontMetrics.avgSize * 1.5);
-                const largest = largestItems.sort((a, b) => b.height - a.height)[0];
-                if (largest && largest.str.trim().length > 2 && largest.str.trim().length < 50) {
-                    return { text: largest.str.trim(), confidence: 'high' };
-                }
-                return null;
-            };
-
-            const detectSectionHeaders = (textContent, pageHeight, fontMetrics) => {
-                const potentialHeaders = [];
-                const commonHeaders = ['work experience', 'employment', 'education', 'skills', 'certifications', 'projects', 'publications', 'professional experience'];
-                
-                for (const item of textContent.items) {
-                    const text = item.str.trim();
-                    if (!text || text.length < 2 || text.length > 40) continue;
-                    
-                    const isNearTop = item.transform[5] < pageHeight * 0.2;
-                    const isLargerFont = item.height > fontMetrics.avgSize * 1.2;
-                    const isKnownHeader = commonHeaders.some(h => text.toLowerCase().includes(h));
-                    const isAllCaps = text === text.toUpperCase() && text.length > 2;
-                    
-                    if ((isNearTop && (isLargerFont || isAllCaps)) || isKnownHeader) {
-                        potentialHeaders.push({
-                            original: text,
-                            normalized: normalizeHeaderName(text),
-                            confidence: (isNearTop ? 30 : 0) + (isLargerFont ? 25 : 0) + (isKnownHeader ? 20 : 0) + (isAllCaps ? 15 : 0)
-                        });
-                    }
-                }
-                
-                const uniqueHeaders = new Map();
-                for (const header of potentialHeaders) {
-                    const key = header.normalized;
-                    if (!uniqueHeaders.has(key) || uniqueHeaders.get(key).confidence < header.confidence) {
-                        uniqueHeaders.set(key, header);
-                    }
-                }
-                
-                return Array.from(uniqueHeaders.values()).sort((a, b) => b.confidence - a.confidence);
-            };
-
-            const normalizeHeaderName = (text) => {
-                const lower = text.toLowerCase();
-                if (lower.includes('work') || lower.includes('employment')) return 'WORK EXPERIENCE';
-                if (lower.includes('education')) return 'EDUCATION';
-                if (lower.includes('skill') || lower.includes('core competency')) return 'SKILLS';
-                if (lower.includes('certification') || lower.includes('license')) return 'CERTIFICATIONS';
-                if (lower.includes('project')) return 'PROJECTS';
-                if (lower.includes('publication')) return 'PUBLICATIONS';
-                return text.toUpperCase();
-            };
-
-            const calculateReadabilityScore = (text) => {
-                const sentences = text.split(/[.!?]+/).length;
-                const words = text.split(/\s+/).length;
-                const avgWordsPerSentence = words / Math.max(sentences, 1);
-                let score = 'Moderate';
-                if (avgWordsPerSentence < 10) score = 'Very Easy';
-                else if (avgWordsPerSentence < 15) score = 'Easy';
-                else if (avgWordsPerSentence < 20) score = 'Moderate';
-                else if (avgWordsPerSentence < 25) score = 'Difficult';
-                else score = 'Very Difficult';
-                return { avgWordsPerSentence: Math.round(avgWordsPerSentence * 10) / 10, score };
-            };
-
-            const analyzePdfHealth = async (pdf, fileSize) => {
-                const metadata = await pdf.getMetadata();
-                const numPages = pdf.numPages;
-                const page = await pdf.getPage(1);
-                const viewport = page.getViewport({ scale: 1 });
-                const pageHeight = viewport.height;
-                const textContent = await page.getTextContent({ normalizeWhitespace: true, disableCombineTextItems: false });
-                
-                const fontMetrics = getFontMetrics(textContent);
-                const isMultiColumn = detectMultiColumn(textContent);
-                const headers = detectHeadersByPosition(textContent, pageHeight);
-                const mainTitle = detectMainTitle(textContent, fontMetrics);
-                const sectionHeaders = detectSectionHeaders(textContent, pageHeight, fontMetrics);
-                const resumeBuilder = detectResumeBuilder(metadata);
-                
-                const standardHeaders = ['WORK EXPERIENCE', 'EDUCATION', 'SKILLS'];
-                const foundHeaders = sectionHeaders.map(h => h.normalized);
-                const missingHeaders = standardHeaders.filter(h => !foundHeaders.includes(h));
-                
-                const extractedText = textContent.items.map(item => item.str).join(' ');
-                const readability = calculateReadabilityScore(extractedText);
-                
-                const issues = [];
-                if (isMultiColumn) issues.push({ type: 'multi_column', severity: 'high', message: 'Multi-column layout detected', fix: 'Convert to single-column format for ATS compatibility' });
-                if (headers.length > 0) issues.push({ type: 'headers_detected', severity: 'medium', message: 'Text detected in header area', fix: 'Move contact information to the body of your resume' });
-                if (resumeBuilder.detected && !resumeBuilder.isGood) issues.push({ type: 'resume_builder', severity: 'medium', message: `Generated by ${resumeBuilder.name}`, fix: 'Export as plain text or use Microsoft Word for ATS-friendly PDFs' });
-                if (missingHeaders.length > 0) issues.push({ type: 'missing_sections', severity: 'medium', message: `Missing standard sections: ${missingHeaders.join(', ')}`, fix: 'Add clear section headers for better ATS parsing' });
-                if (numPages > 2) issues.push({ type: 'page_count', severity: 'low', message: `${numPages} pages detected`, fix: 'Consider condensing to 2 pages' });
-                
-                const structureMetadata = {
-                    pageCount: numPages,
-                    hasMultiColumn: isMultiColumn,
-                    hasHeaders: headers.length > 0,
-                    mainTitle: mainTitle,
-                    sectionHeaders: sectionHeaders,
-                    missingHeaders: missingHeaders,
-                    fontMetrics: fontMetrics,
-                    readability: readability,
-                    resumeBuilder: resumeBuilder
-                };
-                
-                return { issues, structureMetadata };
-            };
-
-            // ============================================================
-            // SIMPLE PDF.JS FOR JD EXTRACTION (Keep simple)
-            // ============================================================
-            
+            // Simple PDF.js for JD
             const parsePDFsimple = async (file) => {
                 return new Promise((resolve, reject) => {
                     const reader = new FileReader();
@@ -534,10 +341,42 @@
                 });
             };
 
-            // ============================================================
-            // FILE UPLOAD HANDLER (Resume - Azure Primary, pdf.js Fallback)
-            // ============================================================
-            
+            // PDF Health detection
+            const analyzePdfHealth = async (pdf, fileSize) => {
+                const metadata = await pdf.getMetadata();
+                const numPages = pdf.numPages;
+                const page = await pdf.getPage(1);
+                const viewport = page.getViewport({ scale: 1 });
+                const pageHeight = viewport.height;
+                const textContent = await page.getTextContent();
+                
+                const xPositions = textContent.items.map(item => item.transform[4]);
+                const uniqueX = [...new Set(xPositions.map(x => Math.round(x / 50) * 50))];
+                const isMultiColumn = uniqueX.length > 3 && textContent.items.length > 20;
+                
+                const headerItems = textContent.items.filter(item => item.transform[5] < pageHeight * 0.15);
+                const hasHeaders = headerItems.length > 0;
+                
+                const creator = metadata.info?.Creator || '';
+                const producer = metadata.info?.Producer || '';
+                const isResumeBuilder = /Canva|Novoresume|Zety|Resume\.io|EnhanCV|CVMaker|Wix|Adobe Illustrator/i.test(creator + producer);
+                
+                const issues = [];
+                if (isMultiColumn) issues.push({ type: 'multi_column', severity: 'high', message: 'Multi-column layout detected', fix: 'Convert to single-column format for ATS compatibility' });
+                if (hasHeaders) issues.push({ type: 'headers_detected', severity: 'medium', message: 'Text detected in header area', fix: 'Move contact information to the body of your resume' });
+                if (isResumeBuilder) issues.push({ type: 'resume_builder', severity: 'medium', message: `Generated by ${creator || producer || "unknown resume builder"}`, fix: 'Export as plain text or use Microsoft Word for ATS-friendly PDFs' });
+                if (numPages > 2) issues.push({ type: 'page_count', severity: 'low', message: `${numPages} pages detected`, fix: 'Consider condensing to 2 pages' });
+                
+                const structureMetadata = {
+                    pageCount: numPages,
+                    hasMultiColumn: isMultiColumn,
+                    hasHeaders: hasHeaders
+                };
+                
+                return { issues, structureMetadata };
+            };
+
+            // Resume upload handler
             const handleResumeFileUpload = async (e) => {
                 const file = e.target.files[0];
                 if (!file) return;
@@ -545,7 +384,7 @@
                 setResumeFileName(file.name);
                 setResumeParseError(null);
                 setLoading(true);
-                setAnalysisStage('Extracting text from PDF...');
+                setAnalysisStage('Processing PDF...');
 
                 try {
                     let extractedText = '';
@@ -563,29 +402,25 @@
                         extractionMethod = 'plain-text';
                         extractionConfidence = 100;
                     } else if (file.type === 'application/pdf') {
-                        // Step 1: Try Azure Document Intelligence
                         try {
                             setAnalysisStage('Extracting with Azure Document Intelligence...');
                             const result = await extractWithAzure(file);
                             extractedText = result.text;
                             extractionMethod = result.method;
                             extractionConfidence = result.confidence;
-                            console.log(`✅ Azure extraction successful (${extractedText.length} chars, confidence: ${extractionConfidence})`);
+                            console.log(`✅ Azure extraction successful (${extractedText.length} chars)`);
                         } catch (azureError) {
                             console.warn('Azure failed, falling back to pdf.js layout:', azureError);
                             setAnalysisStage('Azure failed, using pdf.js layout...');
-                            
-                            // Step 2: Fallback to pdf.js with layout sorting
                             const fallbackResult = await extractWithPDFjsLayout(file);
                             extractedText = fallbackResult.text;
                             extractionMethod = fallbackResult.method;
                             extractionConfidence = fallbackResult.confidence;
-                            console.log(`✅ pdf.js layout fallback successful (${extractedText.length} chars, confidence: ${extractionConfidence})`);
+                            console.log(`✅ pdf.js layout successful (${extractedText.length} chars)`);
                         }
                         
-                        // Step 3: Get PDF health (always using pdf.js)
                         setAnalysisStage('Analyzing PDF health...');
-                        const { pdf, fullText } = await parsePDFsimple(file);
+                        const { pdf } = await parsePDFsimple(file);
                         const healthData = await analyzePdfHealth(pdf, file.size);
                         pdfHealth = {
                             pageCount: healthData.structureMetadata?.pageCount || 1,
@@ -614,17 +449,6 @@
                     setAnalysisStage('');
                     setLoading(false);
                     
-                    if (window.amplitude) {
-                        amplitude.track('File Uploaded', {
-                            file_type: file.type,
-                            file_size: file.size,
-                            text_length: extractedText.length,
-                            extraction_method: extractionMethod,
-                            extraction_confidence: extractionConfidence,
-                            pdf_issues: pdfHealth?.issues?.length || 0
-                        });
-                    }
-                    
                 } catch (error) {
                     console.error('Upload error:', error);
                     setResumeParseError(error.message);
@@ -633,10 +457,7 @@
                 }
             };
 
-            // ============================================================
-            // FILE UPLOAD HANDLER (Job Description - Simple PDF.js)
-            // ============================================================
-            
+            // JD upload handler
             const handleJobDescriptionFileUpload = async (e) => {
                 const file = e.target.files[0];
                 if (!file) return;
@@ -683,10 +504,7 @@
                 }
             };
 
-            // ============================================================
-            // ANALYZE RESUME (Direct to Stage 2 - No Parser)
-            // ============================================================
-            
+            // Analyze resume
             const analyzeResume = async () => {
                 if (!resumeText.trim()) {
                     alert('Please provide resume text or upload a file.');
@@ -709,28 +527,12 @@
                 setResult(null);
                 setAnalysisStage('Analyzing with AI...');
 
-                if (window.amplitude) {
-                    amplitude.track('Resume Analysis Started', {
-                        mode: isComparisonMode ? 'comparison' : 'standard',
-                        timestamp: new Date().toISOString(),
-                        resume_length: resumeText.length,
-                        extraction_method: resumePdfHealth?.extractionMethod || 'unknown'
-                    });
-                }
-
                 try {
                     const workerUrl = isComparisonMode ? COMPARE_WORKER_URL : STANDARD_WORKER_URL;
 
                     const payload = isComparisonMode 
-                        ? { 
-                            resumeText: resumeText,
-                            resumePdfHealth: resumePdfHealth,
-                            jobDescriptionText: jobDescriptionText 
-                          }
-                        : { 
-                            resumeText: resumeText,
-                            resumePdfHealth: resumePdfHealth
-                          };
+                        ? { resumeText: resumeText, resumePdfHealth: resumePdfHealth, jobDescriptionText: jobDescriptionText }
+                        : { resumeText: resumeText, resumePdfHealth: resumePdfHealth };
 
                     const response = await fetch(workerUrl, {
                         method: 'POST',
@@ -750,32 +552,13 @@
                         let jsonText = data.candidates[0].content.parts[0].text.trim();
                         jsonText = (jsonText || '').replace(/```json\n?/g, '').replace(/```\n?/g, '');
                         const parsedResult = JSON.parse(jsonText);
-                        
                         parsedResult.pdf_health = resumePdfHealth;
                         setResult(parsedResult);
-                        
-                        if (window.amplitude) {
-                            amplitude.track('Resume Analysis Completed', {
-                                total_score: parsedResult.total_ats_score,
-                                credibility_score: parsedResult.credibility_score,
-                                fit_score: parsedResult.fit_score,
-                                mode: isComparisonMode ? 'comparison' : 'standard'
-                            });
-                        }
                     } else {
                         throw new Error('Invalid response format');
                     }
                 } catch (error) {
                     console.error('Analysis error:', error);
-                    
-                    if (window.amplitude) {
-                        amplitude.track('Resume Analysis Error', {
-                            error_message: error.message,
-                            resume_length: resumeText.length,
-                            mode: isComparisonMode ? 'comparison' : 'standard'
-                        });
-                    }
-                    
                     alert('Error analyzing resume. Please try again.');
                 } finally {
                     setLoading(false);
@@ -788,30 +571,8 @@
                     alert('Please enter a valid email address');
                     return;
                 }
-
-                if (window.amplitude) {
-                    amplitude.track('Email Captured', {
-                        email_domain: email.split('@')[1],
-                        score: result?.total_ats_score
-                    });
-                }
-
-                if (typeof gtag !== 'undefined') {
-                    gtag('event', 'generate_lead', {
-                        'event_category': 'ATS_Scanner',
-                        'event_label': email
-                    });
-                }
-
                 setEmailSent(true);
                 alert('Full report will be sent to: ' + email);
-            };
-
-            const getScoreColor = (score) => {
-                if (score >= 90) return 'score-excellent';
-                if (score >= 80) return 'score-good';
-                if (score >= 70) return 'score-moderate';
-                return 'score-poor';
             };
 
             const getScoreGrade = (score) => {
@@ -828,24 +589,6 @@
                 if (score >= 60) return { label: 'Questionable Credibility', color: 'moderate' };
                 return { label: 'Low Credibility', color: 'low' };
             };
-
-            const getSemanticColor = (positionScore) => {
-                if (positionScore >= -1.5 && positionScore <= 1.5) return 'green';
-                if (Math.abs(positionScore) <= 3.5) return 'orange';
-                return 'red';
-            };
-
-            const getPositionLabel = (positionScore) => {
-                if (positionScore < -3.5) return 'Severely Under-positioned';
-                if (positionScore < -1.5) return 'Moderately Under-positioned';
-                if (positionScore < 0) return 'Slightly Under-positioned';
-                if (positionScore === 0) return 'Perfectly Positioned';
-                if (positionScore <= 1.5) return 'Slightly Over-positioned';
-                if (positionScore <= 3.5) return 'Moderately Over-positioned';
-                return 'Severely Over-positioned';
-            };
-
-            const getScalePosition = (positionScore) => ((positionScore + 5) / 10) * 100;
 
             const getRiskBadgeClass = (riskLevel) => {
                 if (!riskLevel) return 'risk-medium';
@@ -867,9 +610,12 @@
                 return Math.max(0, Math.min(100, score));
             };
 
-            const isPdfHealthCritical = () => {
+            const getPdfHealthColor = () => {
                 const score = getPdfHealthScore();
-                return score !== null && score < 40;
+                if (score === null) return '#6b7280';
+                if (score >= 80) return '#10b981';
+                if (score >= 70) return '#f59e0b';
+                return '#ef4444';
             };
 
             const getPdfHealthLabel = () => {
@@ -882,71 +628,9 @@
                 return 'Critical';
             };
 
-            const getPdfHealthColor = () => {
+            const isPdfHealthCritical = () => {
                 const score = getPdfHealthScore();
-                if (score === null) return '#6b7280';
-                if (score >= 80) return '#10b981';
-                if (score >= 70) return '#f59e0b';
-                return '#ef4444';
-            };
-
-            const getRoleMatchDisclaimer = (roleMatches, atsScore, positionScore) => {
-                if (!roleMatches || roleMatches.length === 0) return null;
-                
-                const strongMatches = roleMatches.filter(m => m.match_percentage >= 80);
-                const strongMatchCount = strongMatches.length;
-                const isPositionedOutsideRange = Math.abs(positionScore) > 1.5;
-                const isLowAts = atsScore < 70;
-                
-                if (strongMatchCount === 0) {
-                    return {
-                        type: 'critical',
-                        title: 'CRITICAL: No strong role matches detected',
-                        message: `Your ATS score (${atsScore}) and positioning score (${positionScore > 0 ? '+' : ''}${positionScore}) are directly limiting your role matches.`,
-                        actions: [
-                            'Replace weak verbs ("assisted" → "managed" where accurate)',
-                            'Add quantified results to bullets without metrics',
-                            'Review the "Missing Keywords" section below'
-                        ],
-                        callToAction: 'Start with "Immediate Fixes" at the bottom of this report'
-                    };
-                }
-                
-                if (strongMatchCount === 1) {
-                    if (isLowAts || isPositionedOutsideRange) {
-                        const isOverPositioned = positionScore > 1.5;
-                        const positionAdvice = isOverPositioned 
-                            ? 'Your over-positioning score suggests your language may be inflated for your level.'
-                            : positionScore < -1.5 
-                                ? 'Your under-positioning score suggests your language sounds junior for your level.'
-                                : 'Your ATS score indicates missing keywords and weak quantification.';
-                        
-                        return {
-                            type: 'warning',
-                            title: '⚠️ You have 1 strong role match. Aim for 2-3.',
-                            message: `${positionAdvice} This is limiting you to only 1 strong match.`,
-                            actions: [
-                                isOverPositioned ? 'Review the "potential_inflation" flags' : 'Replace weak verbs with stronger alternatives',
-                                isOverPositioned ? 'Dial back ownership claims where accuracy allows' : 'Add quantified results to bullets',
-                                'Add keywords from adjacent roles to broaden your appeal'
-                            ],
-                            callToAction: 'Aim for 2-3 roles above 80% for better job search breadth'
-                        };
-                    } else {
-                        return {
-                            type: 'suggestion',
-                            title: '📌 You have 1 strong role match. Aim for 2-3.',
-                            message: 'Your resume is well-positioned, but you are currently only competitive for 1 role.',
-                            actions: [
-                                'Add keywords from adjacent roles',
-                                'Tailor your resume to a second target role',
-                                'Strengthen the 2nd and 3rd bullet in each role section'
-                            ],
-                            callToAction: 'Aim for 2-3 roles above 80% to keep your options open'
-                        };
-                    }
-                }
-                return null;
+                return score !== null && score < 40;
             };
 
             const renderPdfHealthSection = (isCritical) => {
@@ -955,9 +639,7 @@
                 const score = getPdfHealthScore();
                 const label = getPdfHealthLabel();
                 const structure = resumePdfHealth.structure;
-                
                 const containerClass = isCritical ? 'pdf-health-critical' : 'pdf-health-good';
-                
                 const extractionNote = resumePdfHealth.extractionMethod === 'azure' 
                     ? '✅ Text extracted via Azure Document Intelligence (high accuracy)'
                     : resumePdfHealth.extractionMethod === 'pdfjs-layout'
@@ -971,124 +653,56 @@
                             <strong>Score: {score}/100 ({label})</strong>
                             {isCritical && ' — Fix these issues before submitting your resume.'}
                         </p>
-                        
-                        {extractionNote && (
-                            <div className="info-box" style={{ marginBottom: '15px', fontSize: '13px', padding: '8px 12px' }}>
-                                {extractionNote}
-                            </div>
-                        )}
-                        
+                        {extractionNote && <div className="info-box" style={{ marginBottom: '15px', fontSize: '13px', padding: '8px 12px' }}>{extractionNote}</div>}
                         <div className="info-box" style={{ marginBottom: '15px', fontSize: '13px' }}>
                             <strong>ℹ️ About PDF Health Score</strong><br/>
-                            The PDF Health Score is independent of your ATS Score. Most modern ATS systems can handle common PDF formatting like right-aligned dates, centered headers, and indented bullets. However, for maximum compatibility, we recommend using a clean, single-column PDF without tables, columns, or graphics.
+                            The PDF Health Score is independent of your ATS Score. Most modern ATS systems can handle common PDF formatting.
                         </div>
-                        
                         {structure && (
                             <div className="structure-summary">
-                                <div className="structure-card">
-                                    <div>📄</div>
-                                    <div><strong>{structure.pageCount}</strong></div>
-                                    <div style={{ fontSize: '12px', color: '#6b7280' }}>Pages</div>
-                                </div>
-                                <div className="structure-card">
-                                    <div>{structure.hasMultiColumn ? '📰' : '✅'}</div>
-                                    <div><strong>{structure.hasMultiColumn ? 'Multi-Column' : 'Single Column'}</strong></div>
-                                    <div style={{ fontSize: '12px', color: '#6b7280' }}>Layout</div>
-                                </div>
-                                <div className="structure-card">
-                                    <div>{structure.mainTitle ? '👤' : '❓'}</div>
-                                    <div><strong>{structure.mainTitle?.text || 'Not detected'}</strong></div>
-                                    <div style={{ fontSize: '12px', color: '#6b7280' }}>Main Title</div>
-                                </div>
-                                <div className="structure-card">
-                                    <div>📖</div>
-                                    <div><strong>{structure.readability?.score || 'Unknown'}</strong></div>
-                                    <div style={{ fontSize: '12px', color: '#6b7280' }}>Readability</div>
-                                </div>
-                                {structure.resumeBuilder?.detected && (
-                                    <div className="structure-card">
-                                        <div>🏗️</div>
-                                        <div><strong>{structure.resumeBuilder.name}</strong></div>
-                                        <div style={{ fontSize: '12px', color: '#6b7280' }}>Resume Builder</div>
-                                    </div>
-                                )}
+                                <div className="structure-card"><div>📄</div><div><strong>{structure.pageCount}</strong></div><div style={{ fontSize: '12px' }}>Pages</div></div>
+                                <div className="structure-card"><div>{structure.hasMultiColumn ? '📰' : '✅'}</div><div><strong>{structure.hasMultiColumn ? 'Multi-Column' : 'Single Column'}</strong></div><div style={{ fontSize: '12px' }}>Layout</div></div>
                             </div>
                         )}
-                        
-                        {structure?.sectionHeaders && structure.sectionHeaders.length > 0 && (
-                            <div className="pdf-issue low" style={{ marginBottom: '15px' }}>
-                                <div className="pdf-issue-header">📋 Detected Sections</div>
-                                <div className="pdf-issue-fix">
-                                    {structure.sectionHeaders.slice(0, 5).map(h => h.normalized).join(' • ')}
-                                </div>
+                        {resumePdfHealth.issues.map((issue, idx) => (
+                            <div key={idx} className={`pdf-issue ${issue.severity}`}>
+                                <div className="pdf-issue-header">{issue.severity === 'high' ? '🔴' : issue.severity === 'low' ? '🟢' : '🟡'} {issue.message}</div>
+                                <div className="pdf-issue-fix">{issue.fix}</div>
                             </div>
-                        )}
-                        
-                        {resumePdfHealth.issues.map((issue, idx) => {
-                            let icon = '🟡';
-                            if (issue.severity === 'high') icon = '🔴';
-                            else if (issue.severity === 'low') icon = '🟢';
-                            
-                            return (
-                                <div key={idx} className={`pdf-issue ${issue.severity}`}>
-                                    <div className="pdf-issue-header">{icon} {issue.message}</div>
-                                    <div className="pdf-issue-fix">{issue.fix}</div>
-                                </div>
-                            );
-                        })}
-                        
-                        {structure?.missingHeaders?.length > 0 && (
-                            <div className="pdf-issue medium">
-                                <div className="pdf-issue-header">📋 Missing Standard Sections</div>
-                                <div className="pdf-issue-fix">Consider adding: {structure.missingHeaders.join(', ')}</div>
-                            </div>
-                        )}
+                        ))}
                     </div>
                 );
             };
 
             const renderJDComparisonWarnings = () => {
                 if (!isComparisonMode || !result) return null;
-                
                 return (
                     <div>
                         {result.dealbreaker_note && (
                             <div className="dealbreaker-box">
                                 <h4>🔴 DEALBREAKER DETECTED</h4>
                                 <p>{result.dealbreaker_note}</p>
-                                <p style={{ marginTop: '10px', fontSize: '13px', fontWeight: 'bold' }}>
-                                    Your Fit Score has been capped at 40.
-                                </p>
+                                <p style={{ marginTop: '10px', fontSize: '13px', fontWeight: 'bold' }}>Your Fit Score has been capped at 40.</p>
                             </div>
                         )}
-                        
                         {result.level_gap_penalty_applied && result.level_gap_note && (
                             <div className="warning-box">
                                 <strong>⚠️ LEVEL GAP PENALTY APPLIED</strong>
                                 <p style={{ marginTop: '8px' }}>{result.level_gap_note}</p>
-                                <p style={{ marginTop: '8px', fontSize: '13px', color: '#9b2c1d' }}>
-                                    Fit Score has been reduced due to level mismatch.
-                                </p>
                             </div>
                         )}
-                        
                         {result.years_requirement_penalty_applied && result.years_requirement_note && (
                             <div className="warning-box">
                                 <strong>📅 YEARS REQUIREMENT PENALTY</strong>
                                 <p style={{ marginTop: '8px' }}>{result.years_requirement_note}</p>
                             </div>
                         )}
-                        
                         {result.overqualification_note && (
                             <div className="info-box">
                                 <strong>🎯 OVERQUALIFICATION DETECTED</strong>
                                 <p style={{ marginTop: '8px' }}>{result.overqualification_note}</p>
-                                <p style={{ marginTop: '8px', fontSize: '13px' }}>
-                                    Consider applying for Senior or Manager-level roles instead.
-                                </p>
                             </div>
                         )}
-                        
                         {result.role_weighted_note && (
                             <div className="info-box">
                                 <strong>📊 ROLE-WEIGHTED EXPECTATIONS</strong>
@@ -1100,18 +714,18 @@
             };
 
             const renderDispositionRecommendation = () => {
-                if (!result || result.interview_likelihood_score === undefined || result.interview_likelihood_score === null) return null;
+                if (!result || result.interview_likelihood_score === undefined) return null;
                 const rec = getDispositionRecommendation(result.interview_likelihood_score);
                 return (
                     <div className={`recommendation-box ${rec.class}`} style={{ margin: '20px 0' }}>
                         <strong>{rec.icon} {rec.text}</strong>
                         <p style={{ margin: '8px 0 0 0', fontSize: '14px' }}>
-                            {rec.text === "Apply Immediately" && "Your profile is highly competitive. This role is a strong match. Apply immediately."}
+                            {rec.text === "Apply Immediately" && "Your profile is highly competitive. Apply immediately."}
                             {rec.text === "Strong Yes" && "You have a solid chance. This role is worth applying to."}
-                            {rec.text === "Yes" && "Your profile is decent. Apply if interested, but manage expectations."}
-                            {rec.text === "50/50" && "This role is a long shot. Apply if you have time, but don't make this your only application."}
+                            {rec.text === "Yes" && "Your profile is decent. Apply if interested."}
+                            {rec.text === "50/50" && "This role is a long shot. Apply if you have time."}
                             {rec.text === "Probably Not" && "This role is a long shot based on your current profile."}
-                            {rec.text === "Consider Other Roles" && "Your profile suggests you may be overqualified or underqualified for this specific role. Consider targeting roles at a different level."}
+                            {rec.text === "Consider Other Roles" && "Consider targeting roles at a different level."}
                         </p>
                     </div>
                 );
@@ -1123,16 +737,9 @@
                     <div className="explainer" onClick={() => setShowInterviewExplanation(!showInterviewExplanation)}>
                         📊 How is Interview Likelihood calculated? (Click here)
                         <div className={`explainer-content ${showInterviewExplanation ? 'show' : ''}`}>
-                            <p><strong>What this score means:</strong> This estimates the percentage of applications that would result in an interview for a candidate with your resume profile.</p>
-                            <p><strong>Formula:</strong> 25% × e^(-3 × (1 - Quality_Score))</p>
-                            <p><strong>The 25% maximum is based on published hiring data:</strong></p>
-                            <ul style={{ marginLeft: '20px', marginBottom: '10px' }}>
-                                <li>LinkedIn Economic Graph (2023): Top candidates receive interviews for ~15% of applications</li>
-                                <li>Harvard Business Review (2022): Qualified candidates hear back from 10-20% of applications</li>
-                                <li>CareerBuilder Recruiter Survey (2023): 10-15% interview rate for closely matched candidates</li>
-                                <li>National Bureau of Economic Research (2021): Callback rates of 12-18% for top-tier candidates</li>
-                            </ul>
-                            <p><strong>Example:</strong> A 15% score means apply to 7 similar roles → expect 1 interview.</p>
+                            <p>Formula: 25% × e^(-3 × (1 - Quality_Score))</p>
+                            <p>Based on published hiring data: LinkedIn Economic Graph (15%), HBR (10-20%), CareerBuilder (10-15%), NBER (12-18%)</p>
+                            <p>A 15% score means apply to 7 similar roles → expect 1 interview.</p>
                         </div>
                     </div>
                 );
@@ -1145,13 +752,8 @@
                 return (
                     <div className="info-box" style={{ margin: '20px 0' }}>
                         <strong>🏠 Remote Work Readiness (Informational Only)</strong>
-                        <p style={{ marginTop: '8px' }}>Readiness Score: {remoteScore}/100</p>
-                        <p style={{ fontSize: '13px', marginTop: '5px' }}>
-                            {remoteScore >= 70 && "✅ Your resume shows strong remote work indicators."}
-                            {remoteScore >= 40 && remoteScore < 70 && "⚠️ Your resume has some remote work indicators."}
-                            {remoteScore < 40 && "📝 Consider adding remote collaboration tools to your skills section."}
-                        </p>
-                        <p style={{ fontSize: '11px', color: '#64748b', marginTop: '8px' }}>Note: This score does not affect your interview likelihood. It is provided for your awareness only.</p>
+                        <p>Readiness Score: {remoteScore}/100</p>
+                        <p style={{ fontSize: '11px', marginTop: '8px' }}>This score does not affect your interview likelihood.</p>
                     </div>
                 );
             };
@@ -1237,23 +839,13 @@
 
                         {result && (
                             <div className="results-container">
-                                {result.fallback_used && (
-                                    <div className="fallback-note">
-                                        ℹ️ {result.fallback_note || `Analysis completed using ${result.model_used || result.provider_used} due to high demand. Quality unchanged.`}
-                                    </div>
-                                )}
-                                
-                                {result.provider_used && !result.fallback_used && (
-                                    <div className="info-box" style={{ marginBottom: '20px', padding: '8px 16px', textAlign: 'center' }}>
-                                        🔍 Analyzed by: {result.provider_used} {result.model_used ? `(${result.model_used})` : ''}
-                                    </div>
-                                )}
-
+                                {result.fallback_used && <div className="fallback-note">ℹ️ {result.fallback_note || `Analysis completed using ${result.model_used || result.provider_used}`}</div>}
+                                {result.provider_used && !result.fallback_used && <div className="info-box" style={{ marginBottom: '20px', padding: '8px 16px', textAlign: 'center' }}>🔍 Analyzed by: {result.provider_used} {result.model_used ? `(${result.model_used})` : ''}</div>}
                                 {renderJDComparisonWarnings()}
                                 {renderDispositionRecommendation()}
 
                                 <div className="score-grid">
-                                    <div className="score-card"><h4>ATS Score</h4><div className="score-value" style={{ color: result.total_ats_score >= 90 ? '#10b981' : result.total_ats_score >= 80 ? '#3b82f6' : result.total_ats_score >= 70 ? '#f59e0b' : '#ef4444' }}>{result.total_ats_score}</div><div className="score-label">/100 ({getScoreGrade(result.total_ats_score)})</div></div>
+                                    <div className="score-card"><h4>ATS Score</h4><div className="score-value">{result.total_ats_score}</div><div className="score-label">/100 ({getScoreGrade(result.total_ats_score)})</div></div>
                                     {resumePdfHealth && resumePdfHealth.issues && <div className="score-card"><h4>📄 PDF Health Score</h4><div className="score-value" style={{ color: getPdfHealthColor() }}>{getPdfHealthScore()}</div><div className="score-label">/100 ({getPdfHealthLabel()})</div></div>}
                                     {result.fit_score !== null && <div className="score-card"><h4>🎯 Fit Score</h4><div className="score-value">{result.fit_score}</div><div className="score-label">/100 (Role Match)</div></div>}
                                     {result.interview_likelihood_score !== null && <div className="score-card"><h4>📞 Interview Likelihood</h4><div className="score-value">{result.interview_likelihood_score}</div><div className="score-label">/100</div></div>}
@@ -1261,65 +853,76 @@
                                 </div>
 
                                 {renderInterviewExplanation()}
-
                                 {isPdfHealthCritical() && renderPdfHealthSection(true)}
 
                                 {result.credibility_score !== undefined && (
                                     <div className="credibility-container">
                                         <div className="credibility-header"><span className="credibility-title">🔒 Credibility Score</span><span className={`credibility-badge ${getCredibilityLabel(result.credibility_score).color}`}>{getCredibilityLabel(result.credibility_score).label}</span></div>
-                                        <div><div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}><span style={{ fontSize: '14px', color: '#6b7280' }}>Credibility Score</span><span style={{ fontSize: '14px', fontWeight: 'bold', color: '#1a365d' }}>{result.credibility_score}/100</span></div><div className="credibility-bar"><div className="credibility-fill" style={{ width: `${result.credibility_score}%` }}></div></div></div>
-                                        <div className="explainer" onClick={() => setShowCredibilityShortExplainer(!showCredibilityShortExplainer)}>Credibility Score Explained (Click here)<div className={`explainer-content ${showCredibilityShortExplainer ? 'show' : ''}`}><strong>What is the Credibility Score?</strong><br/>The credibility score (0-100) measures how believable your resume is.<br/><br/><strong>How it's calculated:</strong><br/>• Career trajectory (do your promotions make sense?)<br/>• Education vs. title<br/>• Metric plausibility<br/>• Cognitive complexity (Bloom)<br/><br/><strong>What the score means:</strong><br/>• 90-100: Highly credible<br/>• 80-89: Credible<br/>• 70-79: Moderately credible<br/>• 60-69: Questionable<br/>• Below 60: Low credibility</div></div>
-                                        
-                                        {result.credibility_analysis?.career_plausibility_flags?.length > 0 && (<div style={{ marginTop: '20px' }}><h4>📈 Career Trajectory Flags</h4>{result.credibility_analysis.career_plausibility_flags.map((flag, idx) => (<div key={idx} className="credibility-flag-item"><strong>⚠️ {(flag.type || '').replace(/_/g, ' ').toUpperCase() || 'Flag'}</strong><div>{flag.issue || ''}</div><div className="flag-suggestion">💡 {flag.suggestion || ''}</div></div>))}</div>)}
-                                        {result.credibility_analysis?.education_title_flags?.length > 0 && (<div style={{ marginTop: '20px' }}><h4>🎓 Education-Title Flags</h4>{result.credibility_analysis.education_title_flags.map((flag, idx) => (<div key={idx} className="credibility-flag-item"><strong>⚠️ {(flag.type || '').replace(/_/g, ' ').toUpperCase() || 'Flag'}</strong><div>{flag.issue || ''}</div><div className="flag-suggestion">💡 {flag.suggestion || ''}</div></div>))}</div>)}
-                                        {result.credibility_analysis?.metric_plausibility_flags?.length > 0 && (<div style={{ marginTop: '20px' }}><h4>📊 Metric Plausibility Flags</h4>{result.credibility_analysis.metric_plausibility_flags.map((flag, idx) => (<div key={idx} className="credibility-flag-item"><strong>⚠️ {(flag.type || '').replace(/_/g, ' ').toUpperCase() || 'Flag'}</strong><div>{flag.issue || ''}</div><div className="flag-suggestion">💡 {flag.suggestion || ''}</div></div>))}</div>)}
-                                        {result.credibility_analysis?.acting_title_flags?.length > 0 && (<div style={{ marginTop: '20px' }}><h4>🎭 "Acting" / Interim Title Flags</h4>{result.credibility_analysis.acting_title_flags.map((flag, idx) => (<div key={idx} className="credibility-flag-item"><strong>⚠️ {(flag.type || '').replace(/_/g, ' ').toUpperCase() || 'Flag'}</strong><div>{flag.issue || ''}</div><div className="flag-suggestion">💡 {flag.suggestion || ''}</div></div>))}</div>)}
-                                        
-                                        {result.credibility_analysis?.career_gaps && result.credibility_analysis.career_gaps.length > 0 && (
-                                            <div style={{ marginTop: '20px' }}>
-                                                <h4>📅 Career Gaps Detected (Informational Only)</h4>
-                                                {result.credibility_analysis.career_gaps.map((gap, idx) => (
-                                                    <div key={idx} className="info-box" style={{ margin: '10px 0' }}>
-                                                        <strong>Gap of {gap.duration_months || 'unknown'} months</strong>
-                                                        <p style={{ marginTop: '5px', fontSize: '13px' }}>{gap.start_date} to {gap.end_date}</p>
-                                                        {gap.explanation_found && <p>✅ Explanation provided in resume</p>}
-                                                        {!gap.explanation_found && <p>⚠️ No explanation provided - consider adding context (e.g., parental leave, sabbatical, education)</p>}
-                                                    </div>
-                                                ))}
-                                                <p style={{ fontSize: '12px', color: '#6b7280', marginTop: '8px' }}>Career gaps do not affect your score. This information is provided for your awareness.</p>
-                                            </div>
-                                        )}
-                                        
-                                        {result.credibility_analysis?.promotion_signals?.length > 0 && (<div style={{ marginTop: '20px' }}><h4>📈 Promotion Signals</h4>{result.credibility_analysis.promotion_signals.map((signal, idx) => (<div key={idx} className="success-message" style={{ background: '#ecfdf5', borderLeft: '4px solid #10b981' }}>✅ {signal || ''}</div>))}</div>)}
+                                        <div><div className="credibility-bar"><div className="credibility-fill" style={{ width: `${result.credibility_score}%` }}></div></div></div>
+                                        <div className="explainer" onClick={() => setShowCredibilityShortExplainer(!showCredibilityShortExplainer)}>Credibility Score Explained (Click here)<div className={`explainer-content ${showCredibilityShortExplainer ? 'show' : ''}`}>Measures how believable your resume is based on career trajectory, education-title fit, metric plausibility, and cognitive complexity.</div></div>
                                         {result.credibility_analysis?.recency_note && <div style={{ marginTop: '15px', fontSize: '13px', color: '#6b7280', fontStyle: 'italic' }}>📅 {result.credibility_analysis.recency_note}</div>}
                                     </div>
                                 )}
 
                                 {result.semantic_analysis && (
                                     <div className="semantic-container">
-                                        <div className="semantic-header"><span className="semantic-title">🎭 Semantic Positioning</span><span className={`semantic-badge ${getSemanticColor(result.semantic_analysis.position_score)}`}>{getPositionLabel(result.semantic_analysis.position_score)}</span>{result.role_type_detected && <span className="industry-badge">Industry: {result.role_type_detected}</span>}</div>
-                                        <div className="semantic-stats"><div className="semantic-stat"><div className="semantic-stat-label">Position Score</div><div className="semantic-stat-value" style={{ color: Math.abs(result.semantic_analysis.position_score) <= 1.5 ? '#10b981' : Math.abs(result.semantic_analysis.position_score) <= 3.5 ? '#f59e0b' : '#ef4444' }}>{result.semantic_analysis.position_score !== undefined ? <span>{result.semantic_analysis.position_score > 0 ? '+' : ''}{result.semantic_analysis.position_score}</span> : 'N/A'}</div></div><div className="semantic-stat"><div className="semantic-stat-label">Detected Level</div><div className="semantic-stat-value">{result.semantic_analysis.detected_level || 'N/A'}</div></div><div className="semantic-stat"><div className="semantic-stat-label">Confidence</div><div className="semantic-stat-value">{result.semantic_analysis.confidence || 0}%</div></div></div>
-                                        <div className="position-scale"><div className="scale-line"><div className="scale-marker" style={{ left: `${getScalePosition(result.semantic_analysis.position_score)}%` }}></div></div><div className="scale-labels"><span>Under-positioned (-5)</span><span>Aligned (0)</span><span>Over-positioned (+5)</span></div></div>
-                                        <div><div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}><span style={{ fontSize: '14px', color: '#6b7280' }}>Alignment Score</span><span style={{ fontSize: '14px', fontWeight: 'bold', color: '#1a365d' }}>{result.semantic_analysis.alignment_score}/10</span></div><div className="alignment-bar"><div className="alignment-fill" style={{ width: `${(result.semantic_analysis.alignment_score / 10) * 100}%` }}></div></div></div>
-                                        <div className="explainer" onClick={() => setShowPositionExplainer(!showPositionExplainer)}>ℹ️ How to read this score (Click here)<div className={`explainer-content ${showPositionExplainer ? 'show' : ''}`}><strong>POSITION SCORE (-5 to +5)</strong><br/>Measures whether your resume language matches your experience level.<br/><br/><strong>How it's calculated:</strong><br/>• Verb strength ("Led" vs "Assisted")<br/>• Cognitive complexity (Bloom's Taxonomy)<br/>• Your job title vs. years of experience<br/>• Industry expectations<br/><br/><strong>What the score means:</strong><br/>• -1.5 to +1.5 → ✅ Perfectly aligned<br/>• -3.5 to -1.5 → ⚠️ You sound junior<br/>• +1.5 to +3.5 → ⚠️ You sound senior<br/>• Beyond ±3.5 → 🔴 Critical mismatch<br/><br/><strong>ALIGNMENT SCORE (1-10)</strong><br/>• 9-10: Excellent<br/>• 7-8: Good<br/>• 5-6: Fair<br/>• 3-4: Poor<br/>• 1-2: Critical</div></div>
-                                        {result.semantic_analysis.flags?.length > 0 && (<div style={{ marginTop: '20px' }}><h4>Semantic Flags</h4>{result.semantic_analysis.flags.map((flag, idx) => (<div key={idx} className="flag-item"><strong>⚠️ {(flag.type || '').replace('_', ' ').toUpperCase()}</strong><div style={{ marginTop: '5px' }}>"{flag.original_text || ''}"</div><div style={{ marginTop: '5px', fontSize: '13px', color: '#ef4444' }}>{flag.issue || ''}</div><div className="flag-suggestion">💡 {flag.suggestion || ''}</div>{flag.example && <div style={{ marginTop: '5px', color: '#667eea' }}>{flag.example}</div>}</div>))}</div>)}
-                                        {result.semantic_analysis.recommendations?.length > 0 && (<div style={{ marginTop: '20px' }}><h4>Semantic Recommendations</h4><ul style={{ paddingLeft: '20px' }}>{result.semantic_analysis.recommendations.map((rec, idx) => (<li key={idx} style={{ marginBottom: '8px' }}>{rec}</li>))}</ul></div>)}
+                                        <div className="semantic-header"><span className="semantic-title">🎭 Semantic Positioning</span><span className="industry-badge">Industry: {result.role_type_detected || 'Unknown'}</span></div>
+                                        <div className="semantic-stats">
+                                            <div className="semantic-stat"><div className="semantic-stat-label">Position Score</div><div className="semantic-stat-value">{result.semantic_analysis.position_score !== undefined ? (result.semantic_analysis.position_score > 0 ? '+' : '') + result.semantic_analysis.position_score : 'N/A'}</div></div>
+                                            <div className="semantic-stat"><div className="semantic-stat-label">Detected Level</div><div className="semantic-stat-value">{result.semantic_analysis.detected_level || 'N/A'}</div></div>
+                                        </div>
+                                        <div className="explainer" onClick={() => setShowPositionExplainer(!showPositionExplainer)}>ℹ️ How to read this score (Click here)<div className={`explainer-content ${showPositionExplainer ? 'show' : ''}`}>Position Score (-5 to +5): -1.5 to +1.5 = Perfectly aligned. Beyond = misalignment.</div></div>
                                     </div>
                                 )}
 
-                                {result.bloom_analysis && (<div className="v8-section"><div className="results-section"><h3>🌿 Bloom's Taxonomy Analysis</h3><div className="bloom-stats"><div className="bloom-stat"><div className="bloom-stat-label">Avg Bloom Level</div><div className="bloom-stat-value">{result.bloom_analysis.average_bloom_level}</div></div><div className="bloom-stat"><div className="bloom-stat-label">Expected Level</div><div className="bloom-stat-value">{result.bloom_analysis.expected_bloom_level}</div></div><div className="bloom-stat"><div className="bloom-stat-label">Gap</div><div className="bloom-stat-value" style={{ color: result.bloom_analysis.bloom_gap > 0 ? '#ef4444' : result.bloom_analysis.bloom_gap < 0 ? '#f59e0b' : '#10b981' }}>{result.bloom_analysis.bloom_gap > 0 ? '+' : ''}{result.bloom_analysis.bloom_gap}</div></div><div className="bloom-stat"><div className="bloom-stat-label">Assessment</div><div className="bloom-stat-value" style={{ fontSize: '14px' }}>{result.bloom_analysis.bloom_assessment}</div></div></div>{result.bloom_analysis.bullets_by_level && (<div className="bullets-by-level"><strong>Bullets by Cognitive Level:</strong>{result.bloom_analysis.bullets_by_level.map((item, idx) => (<div key={idx} style={{ marginTop: '8px', fontSize: '13px' }}><span className={`level-badge level-${item.level}`}>Level {item.level}</span><span>{item.count} bullet{item.count !== 1 ? 's' : ''}</span>{item.example && <span style={{ color: '#6b7280', marginLeft: '10px' }}>— "{((item.example || '').substring(0, 60))}..."</span>}</div>))}</div>)}{result.bloom_analysis.flags?.length > 0 && (<div style={{ marginTop: '15px' }}>{result.bloom_analysis.flags.map((flag, idx) => (<div key={idx} className="flag-item"><strong>⚠️ {(flag.type || '').replace('_', ' ').toUpperCase()}</strong><div>{flag.issue || ''}</div><div className="flag-suggestion">💡 {flag.suggestion || ''}</div></div>))}</div>)}</div></div>)}
+                                {result.bloom_analysis && (
+                                    <div className="v8-section"><div className="results-section">
+                                        <h3>🌿 Bloom's Taxonomy Analysis</h3>
+                                        <div className="bloom-stats">
+                                            <div className="bloom-stat"><div className="bloom-stat-label">Avg Bloom Level</div><div className="bloom-stat-value">{result.bloom_analysis.average_bloom_level}</div></div>
+                                            <div className="bloom-stat"><div className="bloom-stat-label">Expected Level</div><div className="bloom-stat-value">{result.bloom_analysis.expected_bloom_level}</div></div>
+                                            <div className="bloom-stat"><div className="bloom-stat-label">Gap</div><div className="bloom-stat-value">{result.bloom_analysis.bloom_gap}</div></div>
+                                        </div>
+                                    </div></div>
+                                )}
 
-                                {result.grammar_issues && result.grammar_issues.length > 0 && (<div className="v8-section"><div className="results-section"><h3>📝 Grammar & Spelling Issues</h3>{result.grammar_issues.map((issue, idx) => (<div key={idx} className="grammar-item"><div className="error-type" style={{ color: issue.error_type === 'spelling' ? '#ef4444' : issue.error_type === 'grammar' ? '#f59e0b' : '#3b82f6' }}>{(issue.error_type || '').toUpperCase()}</div><div className="original">"{issue.original_text || ''}"</div><div style={{ fontSize: '12px', marginTop: '5px' }}>❌ {issue.issue || ''}</div><div className="suggestion">✅ {issue.suggestion || ''}</div></div>))}</div></div>)}
+                                {result.grammar_issues && result.grammar_issues.length > 0 && (
+                                    <div className="v8-section"><div className="results-section">
+                                        <h3>📝 Grammar & Spelling Issues</h3>
+                                        {result.grammar_issues.map((issue, idx) => (
+                                            <div key={idx} className="grammar-item">
+                                                <div className="original">"{issue.original_text}"</div>
+                                                <div style={{ fontSize: '12px' }}>❌ {issue.issue}</div>
+                                                <div className="suggestion">✅ {issue.suggestion}</div>
+                                            </div>
+                                        ))}
+                                    </div></div>
+                                )}
 
-                                {result.missing_tools && result.missing_tools.length > 0 && (<div className="v8-section"><div className="results-section"><h3>🔧 Missing Tools Detected</h3>{result.missing_tools.map((tool, idx) => (<div key={idx} className="missing-tool-item"><strong>{tool.tool_name || ''}</strong> <span style={{ color: '#6b7280' }}>({tool.category || ''})</span><div className="flag-suggestion">💡 {tool.suggestion || ''}</div></div>))}</div></div>)}
-
-                                {result.weak_metrics_details && result.weak_metrics_details.length > 0 && (<div className="v8-section"><div className="results-section"><h3>📊 Weak Metrics - Need Improvement</h3>{result.weak_metrics_details.map((metric, idx) => (<div key={idx} className="weak-metric-item" style={{ borderLeftColor: '#ef4444' }}><div className="original">"{metric.bullet_text || ''}"</div><div style={{ fontSize: '12px', marginTop: '5px' }}>❌ {metric.reason || ''}</div><div className="suggestion">✅ {metric.fix || ''}</div></div>))}</div></div>)}
-
-                                {result.suggested_rewrites && result.suggested_rewrites.length > 0 && (<div className="v8-section"><div className="results-section"><h3>✏️ Suggested Rewrites</h3>{result.suggested_rewrites.map((rewrite, idx) => (<div key={idx} className="rewrite-item"><div><strong>Original:</strong> "{rewrite.original || ''}"</div><div style={{ marginTop: '8px' }}>❌ {rewrite.issue || ''}</div><div style={{ marginTop: '8px', color: '#10b981' }}><strong>Suggested:</strong> "{rewrite.suggested_rewrite || ''}"</div><div style={{ marginTop: '5px', fontSize: '12px', color: '#6b7280' }}>💡 {rewrite.reason || ''}</div></div>))}</div></div>)}
+                                {result.missing_tools && result.missing_tools.length > 0 && (
+                                    <div className="v8-section"><div className="results-section">
+                                        <h3>🔧 Missing Tools Detected</h3>
+                                        {result.missing_tools.map((tool, idx) => (
+                                            <div key={idx} className="missing-tool-item"><strong>{tool.tool_name}</strong> ({tool.category})<div className="flag-suggestion">💡 {tool.suggestion}</div></div>
+                                        ))}
+                                    </div></div>
+                                )}
 
                                 <div className="results-grid">
-                                    <div className="results-section"><h3>✅ What's Working Well</h3>{result.strengths?.length > 0 ? (<ul className="strengths-list">{result.strengths.map((strength, idx) => (<li key={idx}>{strength || ''}</li>))}</ul>) : (<p>No strengths identified</p>)}{result.market_positioning && (<><h3 style={{ marginTop: '20px' }}>📊 Market Positioning</h3><p><strong>Level:</strong> {result.market_positioning.level || ''}</p><p><strong>Assessment:</strong> {result.market_positioning.assessment || ''}</p></>)}{result.missing_keywords?.length > 0 && (<><h3 style={{ marginTop: '20px' }}>🔍 Missing Keywords</h3><ul className="missing-keywords-list">{result.missing_keywords.map((keyword, idx) => (<li key={idx}>{keyword || ''}</li>))}</ul></>)}{result.role_adjustment_note && (<div style={{ marginTop: '15px', padding: '10px', background: '#e0f2fe', borderRadius: '8px', fontSize: '13px' }}>ℹ️ {result.role_adjustment_note}</div>)}</div>
-                                    <div className="results-section"><h3>🎯 Role Match Scores</h3>{result.role_match?.length > 0 ? (<>{result.role_match.map((role, idx) => (<div key={idx} className="role-match-item"><span>{role.role || ''}</span><span className={role.match_percentage >= 80 ? "match-strong" : "match-percentage"}>{role.match_percentage}%</span></div>))}{(() => { const disclaimer = getRoleMatchDisclaimer(result.role_match, result.total_ats_score, result.semantic_analysis?.position_score || 0); if (disclaimer) { return (<div className={`disclaimer-box ${disclaimer.type}`}><strong>{disclaimer.title}</strong><br/><br/><p>{disclaimer.message}</p><ul style={{ marginTop: '10px', marginLeft: '20px' }}>{disclaimer.actions.map((action, i) => (<li key={i}>{action}</li>))}</ul><p style={{ marginTop: '10px', fontWeight: 'bold' }}>→ {disclaimer.callToAction}</p></div>); } return null; })()}</>) : (<p>No role matches identified</p>)}{result.immediate_fixes?.length > 0 && (<><h3 style={{ marginTop: '20px' }}>🔧 Immediate Fixes</h3><ul>{result.immediate_fixes.map((fix, idx) => (<li key={idx} style={{ marginBottom: '10px' }}>{fix || ''}</li>))}</ul></>)}</div>
+                                    <div className="results-section">
+                                        <h3>✅ What's Working Well</h3>
+                                        {result.strengths?.length > 0 ? (<ul className="strengths-list">{result.strengths.map((s, i) => (<li key={i}>{s}</li>))}</ul>) : (<p>No strengths identified</p>)}
+                                        {result.missing_keywords?.length > 0 && (<><h3 style={{ marginTop: '20px' }}>🔍 Missing Keywords</h3><ul className="missing-keywords-list">{result.missing_keywords.map((k, i) => (<li key={i}>{k}</li>))}</ul></>)}
+                                    </div>
+                                    <div className="results-section">
+                                        <h3>🎯 Role Match Scores</h3>
+                                        {result.role_match?.length > 0 ? (
+                                            result.role_match.map((role, idx) => (
+                                                <div key={idx} className="role-match-item"><span>{role.role}</span><span className={role.match_percentage >= 80 ? "match-strong" : "match-percentage"}>{role.match_percentage}%</span></div>
+                                            ))
+                                        ) : (<p>No role matches identified</p>)}
+                                        {result.immediate_fixes?.length > 0 && (<><h3 style={{ marginTop: '20px' }}>🔧 Immediate Fixes</h3><ul>{result.immediate_fixes.map((fix, idx) => (<li key={idx} style={{ marginBottom: '10px' }}>{fix}</li>))}</ul></>)}
+                                    </div>
                                 </div>
 
                                 {result.all_issues && result.all_issues.length > 0 && (() => {
@@ -1333,53 +936,65 @@
                                                 {counts.important > 0 && <span><span className="priority-badge priority-important">Important</span> {counts.important} issues</span>}
                                                 {counts.nice > 0 && <span><span className="priority-badge priority-nice">Nice-to-have</span> {counts.nice} issues</span>}
                                             </div>
-                                            {totalTime > 0 && (
-                                                <div className="info-box" style={{ marginBottom: '15px' }}>
-                                                    <strong>⏱️ Estimated time to address critical + important issues:</strong> {totalTime} minutes
-                                                </div>
-                                            )}
-                                            <table className="issues-table">
-                                                <thead><tr><th>Priority</th><th>Issue</th><th>Location</th><th>How to Fix</th></tr></thead>
-                                                <tbody>
-                                                    {result.all_issues.map((issue, idx) => (
-                                                        <tr key={idx}>
-                                                            <td className={`priority-${(issue.priority || 'medium').toLowerCase()}`}>{issue.priority || 'Medium'}</td>
-                                                            <td><strong>{issue.issue || ''}</strong></td>
-                                                            <td><small style={{ color: '#6b7280' }}>{issue.location || 'General'}</small></td>
-                                                            <td>{issue.fix || issue.suggestion || 'Review and improve'}</td>
-                                                        </tr>
-                                                    ))}
-                                                </tbody>
-                                            </table>
+                                            {totalTime > 0 && <div className="info-box"><strong>⏱️ Estimated time to address critical + important issues:</strong> {totalTime} minutes</div>}
+                                            <table className="issues-table"><thead><tr><th>Priority</th><th>Issue</th><th>Location</th><th>How to Fix</th></tr></thead><tbody>
+                                                {result.all_issues.map((issue, idx) => (
+                                                    <tr key={idx}><td className={`priority-${(issue.priority || 'medium').toLowerCase()}`}>{issue.priority || 'Medium'}</td><td><strong>{issue.issue}</strong></td><td><small>{issue.location || 'General'}</small></td><td>{issue.fix || issue.suggestion || 'Review and improve'}</td></tr>
+                                                ))}
+                                            </tbody></table>
                                         </div>
                                     );
                                 })()}
 
-                                {result.metric_quality_breakdown && (<div className="results-section" style={{ marginTop: '20px' }}><h3>📊 Metric Quality Breakdown</h3><div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '15px', textAlign: 'center' }}><div><div style={{ fontSize: '24px', fontWeight: 'bold', color: '#ef4444' }}>{result.metric_quality_breakdown.weak_count || 0}</div><div style={{ fontSize: '12px', color: '#6b7280' }}>Weak Metrics</div></div><div><div style={{ fontSize: '24px', fontWeight: 'bold', color: '#f59e0b' }}>{result.metric_quality_breakdown.good_count || 0}</div><div style={{ fontSize: '12px', color: '#6b7280' }}>Good Metrics</div></div><div><div style={{ fontSize: '24px', fontWeight: 'bold', color: '#10b981' }}>{result.metric_quality_breakdown.strong_count || 0}</div><div style={{ fontSize: '12px', color: '#6b7280' }}>Strong Metrics</div></div></div><div style={{ marginTop: '15px', textAlign: 'center', fontSize: '13px', color: '#6b7280' }}>Overall Quality Score: {result.metric_quality_breakdown.overall_score}/100</div></div>)}
+                                {result.metric_quality_breakdown && (
+                                    <div className="results-section" style={{ marginTop: '20px' }}>
+                                        <h3>📊 Metric Quality Breakdown</h3>
+                                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '15px', textAlign: 'center' }}>
+                                            <div><div style={{ fontSize: '24px', fontWeight: 'bold', color: '#ef4444' }}>{result.metric_quality_breakdown.weak_count || 0}</div><div>Weak Metrics</div></div>
+                                            <div><div style={{ fontSize: '24px', fontWeight: 'bold', color: '#f59e0b' }}>{result.metric_quality_breakdown.good_count || 0}</div><div>Good Metrics</div></div>
+                                            <div><div style={{ fontSize: '24px', fontWeight: 'bold', color: '#10b981' }}>{result.metric_quality_breakdown.strong_count || 0}</div><div>Strong Metrics</div></div>
+                                        </div>
+                                        <div style={{ textAlign: 'center', marginTop: '15px' }}>Overall Quality Score: {result.metric_quality_breakdown.overall_score}/100</div>
+                                    </div>
+                                )}
 
                                 {!isPdfHealthCritical() && renderPdfHealthSection(false)}
-
                                 {renderRemoteReadiness()}
 
-                                {result.breakdown && (<div className="results-section" style={{ marginTop: '20px' }}><h3>📊 Score Breakdown</h3><table className="issues-table"><thead><tr><th>Category</th><th>Score</th><th>Max</th></tr></thead><tbody>
-                                    <tr><td>Header & Contact</td>了一般{result.breakdown.header_contact || 0}</td><td>10</td></tr>
-                                    <tr><td>Keyword Density</td><td>{result.breakdown.keyword_density || 0}</td><td>20</td></tr>
-                                    <tr><td>Quantified Results</td><td>{result.breakdown.quantified_results || 0}</td><td>20</td></tr>
-                                    <tr><td>Action Verbs</td><td>{result.breakdown.action_verbs || 0}</td><td>15</td></tr>
-                                    <tr><td>Formatting & Structure</td><td>{result.breakdown.formatting_structure || 0}</td><td>10</td></tr>
-                                    <tr><td>Skills Section</td><td>{result.breakdown.skills_section || 0}</td><td>10</td></tr>
-                                    <tr><td>Length & Brevity</td><td>{result.breakdown.length_brevity || 0}</td><td>5</td></tr>
-                                    <tr><td>Publications & Projects</td><td>{result.breakdown.publications_projects || 0}</td><td>5</td></tr>
-                                    {result.breakdown.recruiter_scan_penalty !== undefined && <tr><td>Recruiter Scan Penalty</td><td>{result.breakdown.recruiter_scan_penalty}</td><td>0</td></tr>}
-                                    {result.breakdown.buzzword_repetition_penalty !== undefined && <tr><td>Buzzword/Repetition Penalty</td><td>{result.breakdown.buzzword_repetition_penalty}</td><td>0</td></tr>}
-                                </tbody>
-                            </table>
-                        </div>)}
+                                {result.breakdown && (
+                                    <div className="results-section" style={{ marginTop: '20px' }}>
+                                        <h3>📊 Score Breakdown</h3>
+                                        <table className="issues-table"><thead><tr><th>Category</th><th>Score</th><th>Max</th></tr></thead><tbody>
+                                            <tr><td>Header & Contact</td><td>{result.breakdown.header_contact || 0}</td><td>10</td></tr>
+                                            <tr><td>Keyword Density</td><td>{result.breakdown.keyword_density || 0}</td><td>20</td></tr>
+                                            <tr><td>Quantified Results</td><td>{result.breakdown.quantified_results || 0}</td><td>20</td></tr>
+                                            <tr><td>Action Verbs</td><td>{result.breakdown.action_verbs || 0}</td><td>15</td></tr>
+                                            <tr><td>Formatting & Structure</td><td>{result.breakdown.formatting_structure || 0}</td><td>10</td></tr>
+                                            <tr><td>Skills Section</td><td>{result.breakdown.skills_section || 0}</td><td>10</td></tr>
+                                            <tr><td>Length & Brevity</td><td>{result.breakdown.length_brevity || 0}</td><td>5</td></tr>
+                                            <tr><td>Publications & Projects</td><td>{result.breakdown.publications_projects || 0}</td><td>5</td></tr>
+                                        </tbody></table>
+                                    </div>
+                                )}
 
-                        <div className="email-capture"><h3>📧 Get Your Full Report</h3><p>Enter your email to receive a detailed PDF with all findings, personalized recommendations, and a complete action plan.</p>{!emailSent ? (<div className="email-input"><input type="email" placeholder="your.email@example.com" value={email} onChange={(e) => setEmail(e.target.value)} /><button onClick={handleEmailSubmit}>Send Full Report</button></div>) : (<p style={{ color: '#10b981', fontWeight: 'bold' }}>✅ Full report will be sent to {email}</p>)}</div>
+                                <div className="email-capture">
+                                    <h3>📧 Get Your Full Report</h3>
+                                    <p>Enter your email to receive a detailed PDF with all findings.</p>
+                                    {!emailSent ? (
+                                        <div className="email-input">
+                                            <input type="email" placeholder="your.email@example.com" value={email} onChange={(e) => setEmail(e.target.value)} />
+                                            <button onClick={handleEmailSubmit}>Send Full Report</button>
+                                        </div>
+                                    ) : (<p style={{ color: '#10b981' }}>✅ Full report will be sent to {email}</p>)}
+                                </div>
 
-                        <button onClick={() => { setResult(null); setResumeText(''); setResumeFileName(''); setResumeParseError(null); setResumePdfHealth(null); setJobDescriptionText(''); setJobDescriptionFileName(''); setJobDescriptionParseError(null); setEmail(''); setEmailSent(false); setShowCredibilityExplainer(false); setShowSemanticExplainer(false); setShowPositionExplainer(false); setShowCredibilityShortExplainer(false); setShowInterviewExplanation(false); setAnalysisStage(''); }} style={{ marginTop: '30px', background: '#6b7280', width: '100%', padding: '16px', borderRadius: '8px', border: 'none', color: 'white', fontWeight: '600', cursor: 'pointer' }}>Scan Another Resume</button>
+                                <button onClick={() => { setResult(null); setResumeText(''); setResumeFileName(''); setResumeParseError(null); setResumePdfHealth(null); setJobDescriptionText(''); setJobDescriptionFileName(''); setJobDescriptionParseError(null); setEmail(''); setEmailSent(false); setShowInterviewExplanation(false); setAnalysisStage(''); }} style={{ marginTop: '30px', background: '#6b7280', width: '100%', padding: '16px', borderRadius: '8px', border: 'none', color: 'white', fontWeight: '600', cursor: 'pointer' }}>Scan Another Resume</button>
+                            </div>
+                        )}
                     </div>
+
+                    <div className="back-link"><a href="https://jkh-consulting.keron62.workers.dev/index.html">← Back to JKH Consulting</a></div>
+                    <div className="privacy-note">🔒 Your resume is sent to a secure proxy for analysis. No data is stored permanently.</div>
                 </div>
             );
         }
