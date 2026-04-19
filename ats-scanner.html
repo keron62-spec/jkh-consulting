@@ -559,9 +559,25 @@
                         throw new Error(data.error || 'Analysis failed');
                     }
                     
+                    let parsedResult = null;
+                    
                     // DENO WORKER RETURNS JSON DIRECTLY (no candidates wrapper)
-                    // The data IS the parsed result
-                    let parsedResult = data;
+                    // Check if data has total_ats_score (Deno direct format)
+                    if (data.total_ats_score !== undefined) {
+                        console.log('✅ Using Deno direct response format');
+                        parsedResult = data;
+                    }
+                    // Legacy Gemini format (candidates wrapper)
+                    else if (data.candidates && data.candidates[0] && data.candidates[0].content) {
+                        console.log('⚠️ Using legacy Gemini response format');
+                        let jsonText = data.candidates[0].content.parts[0].text.trim();
+                        jsonText = jsonText.replace(/```json\n?/g, '').replace(/```\n?/g, '');
+                        parsedResult = JSON.parse(jsonText);
+                    }
+                    else {
+                        console.log('⚠️ Unknown response format, using as-is');
+                        parsedResult = data;
+                    }
                     
                     // Handle case where LLM returned array instead of object
                     if (Array.isArray(parsedResult)) {
@@ -653,6 +669,8 @@
                     
                     parsedResult.pdf_health = resumePdfHealth;
                     setResult(parsedResult);
+                    
+                    console.log(`🎉 Analysis complete! Scores: ATS=${parsedResult.total_ats_score}, Fit=${parsedResult.fit_score}, Interview=${parsedResult.interview_likelihood_score}`);
                     
                     if (window.amplitude) {
                         amplitude.track('Resume Analysis Completed', {
