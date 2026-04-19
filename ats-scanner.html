@@ -548,7 +548,7 @@
             };
 
             // ============================================================
-            // ANALYZE RESUME WITH 3-STAGE PIPELINE
+            // ANALYZE RESUME WITH 3-STAGE PIPELINE (FIXED)
             // ============================================================
             
             const analyzeResume = async () => {
@@ -584,6 +584,9 @@
                 }
 
                 try {
+                    let structuredResume = null;
+                    let pdfHealth = null;
+                    
                     // STEP 1: Call Stage 1 Worker to parse resume
                     setAnalysisStage('Parsing resume structure (Stage 1)...');
                     
@@ -599,11 +602,25 @@
                     const parserData = await parserResponse.json();
 
                     if (parserData.error) {
-                        throw new Error(parserData.error);
+                        console.warn('Parser error, using legacy path:', parserData.error);
+                        structuredResume = null;
+                        pdfHealth = resumePdfHealth;
+                    } else {
+                        // Parser returns data at root level, not inside a "resume" object
+                        structuredResume = {
+                            parsed: true,
+                            header: parserData.header || {},
+                            summary: parserData.summary || "",
+                            experience: parserData.experience || [],
+                            skills: parserData.skills || [],
+                            education: parserData.education || {},
+                            total_years_experience: parserData.total_years_experience || 0,
+                            detected_level: parserData.detected_level || "Unknown"
+                        };
+                        pdfHealth = parserData.pdfHealth || resumePdfHealth;
+                        console.log('✅ Optimized path active - using structured resume');
+                        setAnalysisStage('Structured resume prepared...');
                     }
-
-                    const structuredResume = parserData.resume;
-                    const pdfHealth = parserData.pdfHealth;
 
                     // STEP 2: Call Stage 2 Worker with structured resume
                     setAnalysisStage('Analyzing with AI (Stage 2)...');
@@ -1129,7 +1146,19 @@
 
                                 {!isPdfHealthCritical() && renderPdfHealthSection(false)}
 
-                                {result.breakdown && (<div className="results-section" style={{ marginTop: '20px' }}><h3>📊 Score Breakdown</h3><table className="issues-table"><thead><tr><th>Category</th><th>Score</th><th>Max</th></tr></thead><tbody><tr><td>Header & Contact</td><td>{result.breakdown.header_contact || 0}</td><td>10</td></tr><tr><td>Keyword Density</td><td>{result.breakdown.keyword_density || 0}</td><td>20</td></tr><tr><td>Quantified Results</td><td>{result.breakdown.quantified_results || 0}</td><td>20</td></tr><tr><td>Action Verbs</td><td>{result.breakdown.action_verbs || 0}</td><td>15</td></tr><tr><td>Formatting & Structure</td><td>{result.breakdown.formatting_structure || 0}</td><td>10</td></tr><tr><td>Skills Section</td><td>{result.breakdown.skills_section || 0}</td><td>10</td></tr><tr><td>Length & Brevity</td><td>{result.breakdown.length_brevity || 0}</td><td>5</td></tr><tr><td>Publications & Projects</td><td>{result.breakdown.publications_projects || 0}</td><td>5</td></tr>{result.breakdown.recruiter_scan_penalty !== undefined && <tr><td>Recruiter Scan Penalty</td><td>{result.breakdown.recruiter_scan_penalty}</td><td>0</td></tr>}{result.breakdown.buzzword_repetition_penalty !== undefined && <tr><td>Buzzword/Repetition Penalty</td><td>{result.breakdown.buzzword_repetition_penalty}</td><td>0</td></tr>}</tbody></table></div>)}
+                                {result.breakdown && (<div className="results-section" style={{ marginTop: '20px' }}><h3>📊 Score Breakdown</h3><table className="issues-table"><thead><tr><th>Category</th><th>Score</th><th>Max</th></tr></thead><tbody><tr><td>Header & Contact</td><td>{result.breakdown.header_contact || 0}</td><td>10</td></tr>
+                                    <tr><td>Keyword Density</td><td>{result.breakdown.keyword_density || 0}</td><td>20</td></tr>
+                                    <tr><td>Quantified Results</td><td>{result.breakdown.quantified_results || 0}</td><td>20</td></tr>
+                                    <tr><td>Action Verbs</td><td>{result.breakdown.action_verbs || 0}</td><td>15</td></tr>
+                                    <tr><td>Formatting & Structure</td><td>{result.breakdown.formatting_structure || 0}</td><td>10</td></tr>
+                                    <tr><td>Skills Section</td><td>{result.breakdown.skills_section || 0}</td><td>10</td></tr>
+                                    <tr><td>Length & Brevity</td><td>{result.breakdown.length_brevity || 0}</td><td>5</td></tr>
+                                    <tr><td>Publications & Projects</td><td>{result.breakdown.publications_projects || 0}</td><td>5</td></tr>
+                                    {result.breakdown.recruiter_scan_penalty !== undefined && <tr><td>Recruiter Scan Penalty</td><td>{result.breakdown.recruiter_scan_penalty}</td><td>0</td></tr>}
+                                    {result.breakdown.buzzword_repetition_penalty !== undefined && <tr><td>Buzzword/Repetition Penalty</td><td>{result.breakdown.buzzword_repetition_penalty}</td><td>0</td></tr>}
+                                </tbody>
+                                </table>
+                                </div>)}
 
                                 <div className="email-capture"><h3>📧 Get Your Full Report</h3><p>Enter your email to receive a detailed PDF with all findings, personalized recommendations, and a complete action plan.</p>{!emailSent ? (<div className="email-input"><input type="email" placeholder="your.email@example.com" value={email} onChange={(e) => setEmail(e.target.value)} /><button onClick={handleEmailSubmit}>Send Full Report</button></div>) : (<p style={{ color: '#10b981', fontWeight: 'bold' }}>✅ Full report will be sent to {email}</p>)}</div>
 
