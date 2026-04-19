@@ -222,10 +222,9 @@
             const [analysisStage, setAnalysisStage] = useState('');
 
             // ============================================================
-            // HELPER FUNCTIONS FOR NEW FEATURES
+            // HELPER FUNCTIONS
             // ============================================================
             
-            // Get disposition recommendation based on interview likelihood score
             const getDispositionRecommendation = (score) => {
                 if (score >= 20 && score <= 25) return { text: "Apply Immediately", class: "recommendation-immediate", icon: "🚀" };
                 if (score >= 15 && score <= 19) return { text: "Strong Yes", class: "recommendation-strong", icon: "✅✅" };
@@ -235,7 +234,6 @@
                 return { text: "Consider Other Roles", class: "recommendation-other", icon: "🔄" };
             };
             
-            // Count issues by priority
             const getActionItemCounts = (allIssues) => {
                 if (!allIssues || !Array.isArray(allIssues)) return { critical: 0, important: 0, nice: 0 };
                 return {
@@ -245,7 +243,6 @@
                 };
             };
             
-            // Estimate time to fix (simple heuristic)
             const estimateFixTime = (allIssues) => {
                 if (!allIssues || !Array.isArray(allIssues)) return 0;
                 let minutes = 0;
@@ -258,7 +255,6 @@
                 return minutes;
             };
             
-            // Calculate remote readiness score (informational only)
             const getRemoteReadiness = (resumeText, jdText) => {
                 let score = 0;
                 const remoteIndicators = ["remote", "work from home", "distributed", "virtual", "zoom", "slack", "teams", "async"];
@@ -270,7 +266,7 @@
             };
 
             // ============================================================
-            // PDF STRUCTURE DETECTION WITH COORDINATE EXTRACTION
+            // PDF STRUCTURE DETECTION
             // ============================================================
             
             const detectResumeBuilder = (metadata) => {
@@ -405,7 +401,6 @@
                 const extractedText = textContent.items.map(item => item.str).join(' ');
                 const readability = calculateReadabilityScore(extractedText);
                 
-                // Extract coordinates for multi-column reconstruction
                 const coordinates = textContent.items.map(item => ({
                     text: item.str,
                     x: item.transform[4],
@@ -431,7 +426,7 @@
                     fontMetrics: fontMetrics,
                     readability: readability,
                     resumeBuilder: resumeBuilder,
-                    coordinates: coordinates  // ADDED: for multi-column reconstruction
+                    coordinates: coordinates
                 };
                 
                 return { issues, structureMetadata, extractedText };
@@ -454,7 +449,6 @@
                                 const pageText = textContent.items.map(item => item.str).join(' ');
                                 fullText += pageText + '\n';
                                 
-                                // Extract coordinates for each text item
                                 const pageCoordinates = textContent.items.map(item => ({
                                     text: item.str,
                                     x: item.transform[4],
@@ -472,7 +466,7 @@
                                 structureIssues: structureAnalysis.issues,
                                 structureMetadata: structureAnalysis.structureMetadata,
                                 extractedText: structureAnalysis.extractedText,
-                                coordinates: allCoordinates  // ADDED: pass coordinates to HTML
+                                coordinates: allCoordinates
                             });
                         } catch (error) {
                             reject(new Error('Failed to parse PDF: ' + error.message));
@@ -484,7 +478,7 @@
             };
 
             // ============================================================
-            // FILE UPLOAD HANDLER (WITH COORDINATE EXTRACTION)
+            // FILE UPLOAD HANDLER
             // ============================================================
             
             const handleResumeFileUpload = async (e) => {
@@ -526,7 +520,7 @@
                             structure: structureMetadata,
                             textLength: extractedText.length,
                             fileSize: file.size,
-                            coordinates: coordinates  // ADDED: store coordinates for parser
+                            coordinates: coordinates
                         };
                         
                         if (structureMetadata.hasMultiColumn) {
@@ -632,7 +626,7 @@
             };
 
             // ============================================================
-            // ANALYZE RESUME WITH 3-STAGE PIPELINE (WITH COORDINATES)
+            // ANALYZE RESUME WITH CONFIDENCE-BASED FALLBACK
             // ============================================================
             
             const analyzeResume = async () => {
@@ -646,7 +640,6 @@
                     return;
                 }
 
-                // Rate limiting: 5 seconds between analyses
                 const now = Date.now();
                 if (now - lastAnalysisTime < 5000 && lastAnalysisTime !== 0) {
                     alert('Please wait 5 seconds between analyses.');
@@ -670,17 +663,16 @@
                 try {
                     let structuredResume = null;
                     let pdfHealth = null;
+                    let useRawTextFallback = false;
                     
-                    // STEP 1: Call Stage 1 Worker to parse resume (WITH COORDINATES)
+                    // STEP 1: Call Stage 1 Worker to parse resume
                     setAnalysisStage('Parsing resume structure (Stage 1)...');
                     
-                    // Prepare payload with coordinates for multi-column reconstruction
                     const parserPayload = {
                         resumeText: resumeText,
                         resumePdfHealth: resumePdfHealth
                     };
                     
-                    // Add coordinates if available (for multi-column reconstruction)
                     if (resumePdfHealth?.coordinates) {
                         parserPayload.pdfCoordinates = resumePdfHealth.coordinates;
                         console.log('✅ Sending PDF coordinates for multi-column reconstruction');
@@ -695,45 +687,73 @@
                     const parserData = await parserResponse.json();
 
                     if (parserData.error) {
-                        console.warn('Parser error, using legacy path:', parserData.error);
-                        structuredResume = null;
+                        console.warn('Parser error, using raw text fallback:', parserData.error);
+                        useRawTextFallback = true;
                         pdfHealth = resumePdfHealth;
                     } else {
-                        structuredResume = {
-                            parsed: true,
-                            header: parserData.header || {},
-                            summary: parserData.summary || "",
-                            experience: parserData.experience || [],
-                            skills: parserData.skills || [],
-                            education: parserData.education || {},
-                            total_years_experience: parserData.total_years_experience || 0,
-                            detected_level: parserData.detected_level || "Unknown"
-                        };
-                        pdfHealth = parserData.pdfHealth || resumePdfHealth;
-                        console.log('✅ Optimized path active - using structured resume');
-                        console.log('📊 Parsing confidence:', parserData.parsing_confidence);
-                        console.log('📊 Experience found:', structuredResume.experience?.length);
-                        console.log('📊 Total years:', structuredResume.total_years_experience);
-                        setAnalysisStage(`Structured resume prepared (${structuredResume.experience?.length || 0} jobs found)...`);
+                        // CONFIDENCE-BASED FALLBACK: If confidence < 50, bypass structured resume
+                        const confidence = parserData.parsing_confidence || 0;
+                        console.log('📊 Parsing confidence:', confidence);
+                        
+                        if (confidence < 50) {
+                            console.log('⚠️ Low parsing confidence (' + confidence + '), using raw text fallback');
+                            useRawTextFallback = true;
+                            pdfHealth = resumePdfHealth;
+                            setAnalysisStage('Low parsing confidence, using raw text analysis...');
+                        } else {
+                            structuredResume = {
+                                parsed: true,
+                                header: parserData.header || {},
+                                summary: parserData.summary || "",
+                                experience: parserData.experience || [],
+                                skills: parserData.skills || [],
+                                education: parserData.education || {},
+                                total_years_experience: parserData.total_years_experience || 0,
+                                detected_level: parserData.detected_level || "Unknown"
+                            };
+                            pdfHealth = parserData.pdfHealth || resumePdfHealth;
+                            console.log('✅ Optimized path active - using structured resume');
+                            console.log('📊 Experience found:', structuredResume.experience?.length);
+                            console.log('📊 Total years:', structuredResume.total_years_experience);
+                            setAnalysisStage(`Structured resume prepared (${structuredResume.experience?.length || 0} jobs found)...`);
+                        }
                     }
 
-                    // STEP 2: Call Stage 2 Worker with structured resume
+                    // STEP 2: Call Stage 2 Worker
                     setAnalysisStage('Analyzing with AI (Stage 2)...');
                     
                     const workerUrl = isComparisonMode ? COMPARE_WORKER_URL : STANDARD_WORKER_URL;
 
-                    const payload = isComparisonMode 
-                        ? { 
-                            resumeText: resumeText,
-                            resume: structuredResume,
-                            resumePdfHealth: pdfHealth,
-                            jobDescriptionText: jobDescriptionText 
-                          }
-                        : { 
-                            resumeText: resumeText,
-                            resume: structuredResume,
-                            resumePdfHealth: pdfHealth
-                          };
+                    let payload;
+                    if (useRawTextFallback || !structuredResume) {
+                        // Raw text fallback - send only resumeText
+                        payload = isComparisonMode 
+                            ? { 
+                                resumeText: resumeText,
+                                resumePdfHealth: pdfHealth,
+                                jobDescriptionText: jobDescriptionText 
+                              }
+                            : { 
+                                resumeText: resumeText,
+                                resumePdfHealth: pdfHealth
+                              };
+                        console.log('📤 Sending raw text to Stage 2 (fallback mode)');
+                    } else {
+                        // Optimized path - send structured resume
+                        payload = isComparisonMode 
+                            ? { 
+                                resumeText: resumeText,
+                                resume: structuredResume,
+                                resumePdfHealth: pdfHealth,
+                                jobDescriptionText: jobDescriptionText 
+                              }
+                            : { 
+                                resumeText: resumeText,
+                                resume: structuredResume,
+                                resumePdfHealth: pdfHealth
+                              };
+                        console.log('📤 Sending structured resume to Stage 2 (optimized mode)');
+                    }
 
                     const response = await fetch(workerUrl, {
                         method: 'POST',
@@ -755,6 +775,10 @@
                         const parsedResult = JSON.parse(jsonText);
                         
                         parsedResult.pdf_health = pdfHealth;
+                        if (useRawTextFallback) {
+                            parsedResult.fallback_note = "Analysis completed using raw text due to low parsing confidence. Quality unchanged.";
+                            parsedResult.fallback_used = true;
+                        }
                         setResult(parsedResult);
                         
                         if (window.amplitude) {
@@ -764,8 +788,7 @@
                                 fit_score: parsedResult.fit_score,
                                 semantic_score: parsedResult.semantic_analysis?.position_score,
                                 mode: isComparisonMode ? 'comparison' : 'standard',
-                                level_gap_penalty_applied: parsedResult.level_gap_penalty_applied || false,
-                                dealbreaker_applied: !!parsedResult.dealbreaker_note
+                                used_raw_text_fallback: useRawTextFallback
                             });
                         }
                     } else {
@@ -956,7 +979,6 @@
                 return null;
             };
 
-            // Render PDF Health Section with Structure Summary
             const renderPdfHealthSection = (isCritical) => {
                 if (!resumePdfHealth?.issues || resumePdfHealth.issues.length === 0) return null;
                 
@@ -1043,7 +1065,6 @@
                 );
             };
 
-            // Render JD Comparison Specific Warnings
             const renderJDComparisonWarnings = () => {
                 if (!isComparisonMode || !result) return null;
                 
@@ -1096,7 +1117,6 @@
                 );
             };
 
-            // Render Disposition Recommendation
             const renderDispositionRecommendation = () => {
                 if (!result || result.interview_likelihood_score === undefined || result.interview_likelihood_score === null) return null;
                 const rec = getDispositionRecommendation(result.interview_likelihood_score);
@@ -1115,7 +1135,6 @@
                 );
             };
 
-            // Render Interview Likelihood Explanation
             const renderInterviewExplanation = () => {
                 if (!result || result.interview_likelihood_score === undefined) return null;
                 return (
@@ -1137,7 +1156,6 @@
                 );
             };
 
-            // Render Remote Work Readiness (Informational Only)
             const renderRemoteReadiness = () => {
                 if (!isComparisonMode || !resumeText) return null;
                 const remoteScore = getRemoteReadiness(resumeText, jobDescriptionText);
@@ -1275,7 +1293,6 @@
                                         {result.credibility_analysis?.metric_plausibility_flags?.length > 0 && (<div style={{ marginTop: '20px' }}><h4>📊 Metric Plausibility Flags</h4>{result.credibility_analysis.metric_plausibility_flags.map((flag, idx) => (<div key={idx} className="credibility-flag-item"><strong>⚠️ {(flag.type || '').replace(/_/g, ' ').toUpperCase() || 'Flag'}</strong><div>{flag.issue || ''}</div><div className="flag-suggestion">💡 {flag.suggestion || ''}</div></div>))}</div>)}
                                         {result.credibility_analysis?.acting_title_flags?.length > 0 && (<div style={{ marginTop: '20px' }}><h4>🎭 "Acting" / Interim Title Flags</h4>{result.credibility_analysis.acting_title_flags.map((flag, idx) => (<div key={idx} className="credibility-flag-item"><strong>⚠️ {(flag.type || '').replace(/_/g, ' ').toUpperCase() || 'Flag'}</strong><div>{flag.issue || ''}</div><div className="flag-suggestion">💡 {flag.suggestion || ''}</div></div>))}</div>)}
                                         
-                                        {/* Career Gaps Display */}
                                         {result.credibility_analysis?.career_gaps && result.credibility_analysis.career_gaps.length > 0 && (
                                             <div style={{ marginTop: '20px' }}>
                                                 <h4>📅 Career Gaps Detected (Informational Only)</h4>
