@@ -270,7 +270,7 @@
             };
 
             // ============================================================
-            // PDF STRUCTURE DETECTION (V8.2)
+            // PDF STRUCTURE DETECTION WITH COORDINATE EXTRACTION
             // ============================================================
             
             const detectResumeBuilder = (metadata) => {
@@ -405,6 +405,15 @@
                 const extractedText = textContent.items.map(item => item.str).join(' ');
                 const readability = calculateReadabilityScore(extractedText);
                 
+                // Extract coordinates for multi-column reconstruction
+                const coordinates = textContent.items.map(item => ({
+                    text: item.str,
+                    x: item.transform[4],
+                    y: item.transform[5],
+                    width: item.width,
+                    height: item.height
+                }));
+                
                 const issues = [];
                 if (isMultiColumn) issues.push({ type: 'multi_column', severity: 'high', message: 'Multi-column layout detected', fix: 'Convert to single-column format for ATS compatibility' });
                 if (headers.length > 0) issues.push({ type: 'headers_detected', severity: 'medium', message: 'Text detected in header area', fix: 'Move contact information to the body of your resume' });
@@ -421,7 +430,8 @@
                     missingHeaders: missingHeaders,
                     fontMetrics: fontMetrics,
                     readability: readability,
-                    resumeBuilder: resumeBuilder
+                    resumeBuilder: resumeBuilder,
+                    coordinates: coordinates  // ADDED: for multi-column reconstruction
                 };
                 
                 return { issues, structureMetadata, extractedText };
@@ -436,11 +446,22 @@
                             const pdf = await pdfjsLib.getDocument(typedarray).promise;
                             
                             let fullText = '';
+                            let allCoordinates = [];
+                            
                             for (let i = 1; i <= pdf.numPages; i++) {
                                 const page = await pdf.getPage(i);
                                 const textContent = await page.getTextContent({ normalizeWhitespace: true, disableCombineTextItems: false });
                                 const pageText = textContent.items.map(item => item.str).join(' ');
                                 fullText += pageText + '\n';
+                                
+                                // Extract coordinates for each text item
+                                const pageCoordinates = textContent.items.map(item => ({
+                                    text: item.str,
+                                    x: item.transform[4],
+                                    y: item.transform[5],
+                                    page: i
+                                }));
+                                allCoordinates = allCoordinates.concat(pageCoordinates);
                             }
                             
                             const structureAnalysis = await analyzePdfStructure(pdf, file.size);
@@ -450,7 +471,8 @@
                                 pdf, 
                                 structureIssues: structureAnalysis.issues,
                                 structureMetadata: structureAnalysis.structureMetadata,
-                                extractedText: structureAnalysis.extractedText
+                                extractedText: structureAnalysis.extractedText,
+                                coordinates: allCoordinates  // ADDED: pass coordinates to HTML
                             });
                         } catch (error) {
                             reject(new Error('Failed to parse PDF: ' + error.message));
@@ -462,7 +484,7 @@
             };
 
             // ============================================================
-            // FILE UPLOAD HANDLER (WITH STRUCTURE DETECTION)
+            // FILE UPLOAD HANDLER (WITH COORDINATE EXTRACTION)
             // ============================================================
             
             const handleResumeFileUpload = async (e) => {
@@ -478,6 +500,7 @@
                     let extractedText = '';
                     let pdfHealth = null;
                     let structureMetadata = null;
+                    let pdfCoordinates = null;
                     
                     if (file.type === 'text/plain') {
                         setAnalysisStage('Reading text file...');
@@ -490,10 +513,11 @@
                         setAnalysisStage('Processing text...');
                     } else if (file.type === 'application/pdf') {
                         setAnalysisStage('Parsing PDF structure...');
-                        const { fullText, structureIssues, structureMetadata: metadata, extractedText: structuredText } = await parsePDF(file);
+                        const { fullText, structureIssues, structureMetadata: metadata, extractedText: structuredText, coordinates } = await parsePDF(file);
                         setAnalysisStage('Extracting text from PDF...');
                         extractedText = fullText;
                         structureMetadata = metadata;
+                        pdfCoordinates = coordinates;
                         
                         pdfHealth = {
                             pageCount: structureMetadata.pageCount,
@@ -501,7 +525,8 @@
                             issues: structureIssues,
                             structure: structureMetadata,
                             textLength: extractedText.length,
-                            fileSize: file.size
+                            fileSize: file.size,
+                            coordinates: coordinates  // ADDED: store coordinates for parser
                         };
                         
                         if (structureMetadata.hasMultiColumn) {
@@ -607,7 +632,7 @@
             };
 
             // ============================================================
-            // ANALYZE RESUME WITH 3-STAGE PIPELINE
+            // ANALYZE RESUME WITH 3-STAGE PIPELINE (WITH COORDINATES)
             // ============================================================
             
             const analyzeResume = async () => {
@@ -646,16 +671,25 @@
                     let structuredResume = null;
                     let pdfHealth = null;
                     
-                    // STEP 1: Call Stage 1 Worker to parse resume
+                    // STEP 1: Call Stage 1 Worker to parse resume (WITH COORDINATES)
                     setAnalysisStage('Parsing resume structure (Stage 1)...');
+                    
+                    // Prepare payload with coordinates for multi-column reconstruction
+                    const parserPayload = {
+                        resumeText: resumeText,
+                        resumePdfHealth: resumePdfHealth
+                    };
+                    
+                    // Add coordinates if available (for multi-column reconstruction)
+                    if (resumePdfHealth?.coordinates) {
+                        parserPayload.pdfCoordinates = resumePdfHealth.coordinates;
+                        console.log('✅ Sending PDF coordinates for multi-column reconstruction');
+                    }
                     
                     const parserResponse = await fetch(PARSER_WORKER_URL, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            resumeText: resumeText,
-                            resumePdfHealth: resumePdfHealth
-                        })
+                        body: JSON.stringify(parserPayload)
                     });
 
                     const parserData = await parserResponse.json();
@@ -677,7 +711,10 @@
                         };
                         pdfHealth = parserData.pdfHealth || resumePdfHealth;
                         console.log('✅ Optimized path active - using structured resume');
-                        setAnalysisStage('Structured resume prepared...');
+                        console.log('📊 Parsing confidence:', parserData.parsing_confidence);
+                        console.log('📊 Experience found:', structuredResume.experience?.length);
+                        console.log('📊 Total years:', structuredResume.total_years_experience);
+                        setAnalysisStage(`Structured resume prepared (${structuredResume.experience?.length || 0} jobs found)...`);
                     }
 
                     // STEP 2: Call Stage 2 Worker with structured resume
@@ -1336,7 +1373,9 @@
                                     <tr><td>Publications & Projects</td><td>{result.breakdown.publications_projects || 0}</td><td>5</td></tr>
                                     {result.breakdown.recruiter_scan_penalty !== undefined && <tr><td>Recruiter Scan Penalty</td><td>{result.breakdown.recruiter_scan_penalty}</td><td>0</td></tr>}
                                     {result.breakdown.buzzword_repetition_penalty !== undefined && <tr><td>Buzzword/Repetition Penalty</td><td>{result.breakdown.buzzword_repetition_penalty}</td><td>0</td></tr>}
-                                </tbody></table></div>)}
+                                </tbody>
+                                </table>
+                                </div>)}
 
                                 <div className="email-capture"><h3>📧 Get Your Full Report</h3><p>Enter your email to receive a detailed PDF with all findings, personalized recommendations, and a complete action plan.</p>{!emailSent ? (<div className="email-input"><input type="email" placeholder="your.email@example.com" value={email} onChange={(e) => setEmail(e.target.value)} /><button onClick={handleEmailSubmit}>Send Full Report</button></div>) : (<p style={{ color: '#10b981', fontWeight: 'bold' }}>✅ Full report will be sent to {email}</p>)}</div>
 
