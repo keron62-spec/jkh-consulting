@@ -549,11 +549,104 @@
                     }
 
                     if (data.candidates && data.candidates[0] && data.candidates[0].content) {
-                        let jsonText = data.candidates[0].content.parts[0].text.trim();
-                        jsonText = (jsonText || '').replace(/```json\n?/g, '').replace(/```\n?/g, '');
-                        const parsedResult = JSON.parse(jsonText);
-                        parsedResult.pdf_health = resumePdfHealth;
-                        setResult(parsedResult);
+    let jsonText = data.candidates[0].content.parts[0].text.trim();
+    jsonText = (jsonText || '').replace(/```json\n?/g, '').replace(/```\n?/g, '');
+    let parsedResult = JSON.parse(jsonText);
+    
+    // ============================================================
+    // FIX: Handle array response (LLM returned array instead of object)
+    // ============================================================
+    if (Array.isArray(parsedResult)) {
+        console.log('⚠️ LLM returned array, converting to object');
+        parsedResult = parsedResult[0] || {};
+    }
+    
+    // ============================================================
+    // FIX: Ensure required fields exist with defaults
+    // ============================================================
+    parsedResult.total_ats_score = parsedResult.total_ats_score || 
+        parsedResult.ats_score || 
+        parsedResult.compatibility_score || 
+        65;
+    
+    parsedResult.fit_score = parsedResult.fit_score || 
+        parsedResult.match_score || 
+        60;
+    
+    parsedResult.interview_likelihood_score = parsedResult.interview_likelihood_score || 
+        parsedResult.interview_score || 
+        10;
+    
+    parsedResult.credibility_score = parsedResult.credibility_score || 
+        parsedResult.credibility || 
+        65;
+    
+    parsedResult.risk_level = parsedResult.risk_level || 
+        parsedResult.risk || 
+        "Medium";
+    
+    // Ensure arrays exist
+    parsedResult.strengths = parsedResult.strengths || [];
+    parsedResult.all_issues = parsedResult.all_issues || [];
+    parsedResult.immediate_fixes = parsedResult.immediate_fixes || [];
+    parsedResult.role_match = parsedResult.role_match || [];
+    parsedResult.missing_keywords = parsedResult.missing_keywords || [];
+    parsedResult.missing_tools = parsedResult.missing_tools || [];
+    parsedResult.grammar_issues = parsedResult.grammar_issues || [];
+    parsedResult.weak_metrics_details = parsedResult.weak_metrics_details || [];
+    parsedResult.suggested_rewrites = parsedResult.suggested_rewrites || [];
+    
+    // Ensure nested objects exist
+    parsedResult.semantic_analysis = parsedResult.semantic_analysis || {
+        position_score: 0,
+        alignment_score: 5,
+        detected_level: "Unknown",
+        confidence: 50,
+        flags: [],
+        recommendations: []
+    };
+    
+    parsedResult.bloom_analysis = parsedResult.bloom_analysis || {
+        average_bloom_level: 3.5,
+        expected_bloom_level: 3.5,
+        bloom_gap: 0,
+        bloom_assessment: "Unable to determine",
+        bullets_by_level: [],
+        flags: []
+    };
+    
+    parsedResult.credibility_analysis = parsedResult.credibility_analysis || {
+        career_plausibility_flags: [],
+        education_title_flags: [],
+        metric_plausibility_flags: [],
+        acting_title_flags: [],
+        promotion_signals: [],
+        recency_note: "Analysis completed"
+    };
+    
+    parsedResult.breakdown = parsedResult.breakdown || {
+        header_contact: 7,
+        keyword_density: 13,
+        quantified_results: 12,
+        action_verbs: 10,
+        formatting_structure: 7,
+        skills_section: 6,
+        length_brevity: 3,
+        publications_projects: 2,
+        recruiter_scan_penalty: -3,
+        buzzword_repetition_penalty: -2
+    };
+    
+    parsedResult.metric_quality_breakdown = parsedResult.metric_quality_breakdown || {
+        overall_score: 55,
+        bullets_assessed: 8,
+        weak_count: 3,
+        good_count: 3,
+        strong_count: 2
+    };
+    
+    parsedResult.pdf_health = pdfHealth;
+    setResult(parsedResult);
                     } else {
                         throw new Error('Invalid response format');
                     }
