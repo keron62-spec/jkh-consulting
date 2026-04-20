@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ATS Resume Scanner V8.2.1 | JKH Consulting</title>
+    <title>ATS Resume Scanner V8.3 | JKH Consulting</title>
     <meta name="description" content="Get your resume scored by an AI-powered ATS scanner. Instant feedback on formatting, keywords, and what recruiters actually see.">
     
     <!-- Google Analytics -->
@@ -31,13 +31,10 @@
     <!-- Contentsquare (Hotjar) Tracking -->
     <script src="https://t.contentsquare.net/uxa/5f94e8837c5a5.js"></script>
     
-    <!-- UNPDF - Modern PDF extraction (replaces pdf.js) -->
-    <script type="importmap">
-        {
-            "imports": {
-                "unpdf": "https://esm.sh/unpdf@0.4.0"
-            }
-        }
+    <!-- PDF.js Library for PDF Extraction (Fallback) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+    <script>
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
     </script>
     
     <!-- Mammoth.js for DOCX support -->
@@ -307,7 +304,6 @@
         .risk-medium { background: #fed7aa; color: #9b2c1d; }
         .risk-high { background: #fee2e2; color: #991b1b; }
 
-        /* Interview Flag Styles */
         .interview-flag {
             padding: 8px 16px;
             border-radius: 24px;
@@ -322,7 +318,6 @@
         .flag-orange { background: #f59e0b; color: white; }
         .flag-red { background: #ef4444; color: white; }
 
-        /* Should You Apply Box */
         .apply-box {
             background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
             border-radius: 16px;
@@ -345,7 +340,6 @@
             color: #6b7280;
         }
 
-        /* Tooltip for Interview Likelihood */
         .tooltip {
             position: relative;
             display: inline-block;
@@ -375,18 +369,7 @@
             visibility: visible;
             opacity: 1;
         }
-        .tooltip .tooltip-text::after {
-            content: "";
-            position: absolute;
-            top: 100%;
-            left: 50%;
-            margin-left: -5px;
-            border-width: 5px;
-            border-style: solid;
-            border-color: #1f2937 transparent transparent transparent;
-        }
 
-        /* Azure Health Warning Box */
         .ats-health-critical {
             background: #fef2f2;
             border: 2px solid #ef4444;
@@ -401,22 +384,6 @@
             padding: 20px;
             margin: 20px 0;
         }
-        .ats-health-good {
-            background: #f0fdf4;
-            border: 2px solid #22c55e;
-            border-radius: 16px;
-            padding: 20px;
-            margin: 20px 0;
-        }
-        .health-issue {
-            padding: 8px 0;
-            border-bottom: 1px solid #e5e7eb;
-        }
-        .health-fix {
-            font-size: 12px;
-            color: #10b981;
-            margin-top: 4px;
-        }
 
         .pdf-health-critical {
             background: #fef2f2;
@@ -425,12 +392,6 @@
             padding: 24px;
             margin: 20px 0;
         }
-
-        .pdf-health-critical h3 {
-            color: #991b1b;
-            margin-bottom: 12px;
-        }
-
         .pdf-health-good {
             background: #f8fafc;
             border: 1px solid #e2e8f0;
@@ -445,18 +406,15 @@
             border-radius: 8px;
             background: white;
         }
-
         .pdf-issue-header {
             font-weight: 600;
             margin-bottom: 5px;
         }
-
         .pdf-issue-message {
             font-size: 13px;
             color: #4b5563;
             margin-bottom: 5px;
         }
-
         .pdf-issue-fix {
             font-size: 12px;
             color: #10b981;
@@ -469,7 +427,6 @@
             margin: 20px 0;
             border: 1px solid #e2e8f0;
         }
-
         .credibility-header {
             display: flex;
             justify-content: space-between;
@@ -478,24 +435,20 @@
             flex-wrap: wrap;
             gap: 10px;
         }
-
         .credibility-title {
             font-size: 18px;
             font-weight: 600;
             color: #1a365d;
         }
-
         .credibility-badge {
             padding: 6px 12px;
             border-radius: 20px;
             font-size: 14px;
             font-weight: 600;
         }
-
         .credibility-badge.high { background: #d1fae5; color: #065f46; }
         .credibility-badge.moderate { background: #fed7aa; color: #9b2c1d; }
         .credibility-badge.low { background: #fee2e2; color: #991b1b; }
-
         .credibility-bar {
             background: #e5e7eb;
             border-radius: 10px;
@@ -503,7 +456,6 @@
             overflow: hidden;
             margin: 15px 0;
         }
-
         .credibility-fill {
             background: linear-gradient(90deg, #ef4444, #f59e0b, #10b981);
             height: 100%;
@@ -518,7 +470,6 @@
             margin: 20px 0;
             border: 1px solid #e2e8f0;
         }
-
         .semantic-header {
             display: flex;
             justify-content: space-between;
@@ -527,20 +478,17 @@
             flex-wrap: wrap;
             gap: 10px;
         }
-
         .semantic-title {
             font-size: 18px;
             font-weight: 600;
             color: #1a365d;
         }
-
         .semantic-badge {
             padding: 6px 12px;
             border-radius: 20px;
             font-size: 14px;
             font-weight: 600;
         }
-
         .semantic-badge.green { background: #d1fae5; color: #065f46; }
         .semantic-badge.orange { background: #fed7aa; color: #9b2c1d; }
         .semantic-badge.red { background: #fee2e2; color: #991b1b; }
@@ -550,7 +498,6 @@
             position: relative;
             padding: 20px 0;
         }
-
         .scale-line {
             height: 8px;
             background: linear-gradient(90deg, #ef4444 0%, #f59e0b 25%, #10b981 50%, #f59e0b 75%, #ef4444 100%);
@@ -558,7 +505,6 @@
             position: relative;
             margin: 20px 0;
         }
-
         .scale-marker {
             position: absolute;
             width: 20px;
@@ -570,7 +516,6 @@
             transform: translate(-50%, -50%);
             box-shadow: 0 2px 8px rgba(0,0,0,0.2);
         }
-
         .scale-labels {
             display: flex;
             justify-content: space-between;
@@ -578,7 +523,6 @@
             font-size: 12px;
             color: #6b7280;
         }
-
         .alignment-bar {
             background: #e5e7eb;
             border-radius: 10px;
@@ -586,14 +530,12 @@
             overflow: hidden;
             margin: 15px 0;
         }
-
         .alignment-fill {
             background: linear-gradient(90deg, #667eea, #764ba2);
             height: 100%;
             border-radius: 10px;
             transition: width 0.5s ease;
         }
-
         .semantic-stats {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
@@ -603,23 +545,19 @@
             background: white;
             border-radius: 12px;
         }
-
         .semantic-stat {
             text-align: center;
         }
-
         .semantic-stat-label {
             font-size: 12px;
             color: #6b7280;
             margin-bottom: 5px;
         }
-
         .semantic-stat-value {
             font-size: 18px;
             font-weight: 700;
             color: #1a365d;
         }
-
         .explainer {
             background: #f1f5f9;
             padding: 12px;
@@ -629,7 +567,6 @@
             color: #475569;
             cursor: pointer;
         }
-
         .explainer-content {
             margin-top: 10px;
             padding-top: 10px;
@@ -637,7 +574,6 @@
             font-size: 12px;
             display: none;
         }
-
         .explainer-content.show {
             display: block;
         }
@@ -649,20 +585,17 @@
             margin-top: 30px;
             text-align: left;
         }
-
         .results-section {
             background: #f9fafb;
             border-radius: 12px;
             padding: 20px;
         }
-
         .results-section h3 {
             color: #1a365d;
             margin-bottom: 15px;
             border-bottom: 2px solid #667eea;
             padding-bottom: 8px;
         }
-
         .disclaimer-box {
             background: #fffbeb;
             border-left: 4px solid #f59e0b;
@@ -671,7 +604,6 @@
             border-radius: 8px;
             font-size: 14px;
         }
-
         .disclaimer-box.critical { background: #fef2f2; border-left-color: #ef4444; }
         .disclaimer-box.warning { background: #fffbeb; border-left-color: #f59e0b; }
         .disclaimer-box.suggestion { background: #eff6ff; border-left-color: #3b82f6; }
@@ -680,20 +612,17 @@
             width: 100%;
             border-collapse: collapse;
         }
-
         .issues-table th, .issues-table td {
             padding: 12px;
             text-align: left;
             border-bottom: 1px solid #e5e7eb;
             vertical-align: top;
         }
-
         .issues-table th {
             background: #f9fafb;
             font-weight: 600;
             color: #374151;
         }
-
         .priority-high { color: #ef4444; font-weight: 600; }
         .priority-medium { color: #f59e0b; }
         .priority-low { color: #6b7280; }
@@ -702,12 +631,10 @@
             list-style: none;
             padding: 0;
         }
-
         .strengths-list li, .missing-keywords-list li {
             padding: 8px 0;
             border-bottom: 1px solid #e5e7eb;
         }
-
         .strengths-list li:before { content: "✅ "; color: #10b981; }
         .missing-keywords-list li:before { content: "🔍 "; color: #f59e0b; }
 
@@ -718,7 +645,6 @@
             border-radius: 8px;
             border-left: 4px solid #ef4444;
         }
-
         .credibility-flag-item {
             background: #fffbeb;
             padding: 12px;
@@ -726,14 +652,12 @@
             border-radius: 8px;
             border-left: 4px solid #f59e0b;
         }
-
         .role-match-item {
             display: flex;
             justify-content: space-between;
             padding: 10px;
             border-bottom: 1px solid #e5e7eb;
         }
-
         .match-percentage { font-weight: bold; color: #667eea; }
         .match-strong { color: #10b981; font-weight: bold; }
 
@@ -744,14 +668,12 @@
             margin-top: 30px;
             text-align: center;
         }
-
         .email-input {
             display: flex;
             gap: 10px;
             max-width: 500px;
             margin: 20px auto 0;
         }
-
         .email-input input {
             flex: 1;
             padding: 12px 16px;
@@ -759,7 +681,6 @@
             border-radius: 8px;
             font-size: 16px;
         }
-
         .email-input button {
             width: auto;
             padding: 12px 30px;
@@ -775,13 +696,11 @@
             text-align: center;
             margin-top: 30px;
         }
-
         .back-link a {
             color: white;
             text-decoration: none;
             font-weight: 600;
         }
-
         .back-link a:hover { text-decoration: underline; }
 
         .privacy-note {
@@ -805,32 +724,27 @@
         .v8-section {
             margin-top: 20px;
         }
-
         .bloom-stats {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
             gap: 15px;
             margin-bottom: 15px;
         }
-
         .bloom-stat {
             text-align: center;
             padding: 10px;
             background: white;
             border-radius: 8px;
         }
-
         .bloom-stat-label {
             font-size: 11px;
             color: #6b7280;
         }
-
         .bloom-stat-value {
             font-size: 20px;
             font-weight: 700;
             color: #1a365d;
         }
-
         .grammar-item, .missing-tool-item, .rewrite-item, .weak-metric-item {
             background: white;
             padding: 12px;
@@ -838,14 +752,12 @@
             border-radius: 8px;
             border-left: 4px solid #667eea;
         }
-
         .error-type {
             font-size: 11px;
             font-weight: 600;
             text-transform: uppercase;
             margin-bottom: 5px;
         }
-
         .industry-badge {
             display: inline-block;
             padding: 4px 12px;
@@ -856,7 +768,6 @@
             color: #0369a1;
             margin-left: 10px;
         }
-
         .extraction-badge {
             display: inline-block;
             padding: 2px 8px;
@@ -890,7 +801,14 @@
         const STANDARD_WORKER_URL = "https://ats-resume-only.keron62.workers.dev";
         const COMPARE_WORKER_URL = "https://ats-proxy.keron62.workers.dev";
         const AGGREGATOR_URL = "https://ats-aggregator.keron62.workers.dev";
-        const PARSER_WORKER_URL = "https://ats-parser.keron62.workers.dev";
+        
+        // Extraction Pipeline URLs (Tiered Fallback)
+        const PDFJS_EXTRACT_URL = "https://ats-pdfjs-extract.keron62.workers.dev";
+        const UNSTRUCTURED_URL = "https://unstructured-parser.keron62.workers.dev";
+        const AZURE_URL = "https://ats-parser.keron62.workers.dev/azure";
+        
+        // Stage 2 Parser (Structured JSON)
+        const STAGE_2_PARSER_URL = "https://ats-stage-2-parser.keron62.workers.dev";
 
         function ATSScanner() {
             const [isComparisonMode, setIsComparisonMode] = useState(false);
@@ -913,14 +831,12 @@
             const [result, setResult] = useState(null);
             const [email, setEmail] = useState('');
             const [emailSent, setEmailSent] = useState(false);
-            const [showCredibilityExplainer, setShowCredibilityExplainer] = useState(false);
-            const [showSemanticExplainer, setShowSemanticExplainer] = useState(false);
-            const [showPositionExplainer, setShowPositionExplainer] = useState(false);
             const [showCredibilityShortExplainer, setShowCredibilityShortExplainer] = useState(false);
+            const [showPositionExplainer, setShowPositionExplainer] = useState(false);
             const [analysisStage, setAnalysisStage] = useState('');
 
             // ============================================================
-            // INTERVIEW LIKELIHOOD CALCULATION (Exponential Decay)
+            // INTERVIEW LIKELIHOOD CALCULATION
             // ============================================================
             
             function calculateInterviewLikelihood(result) {
@@ -958,30 +874,14 @@
             }
 
             // ============================================================
-            // UNPDF EXTRACTION (Modern PDF extraction - replaces pdf.js)
+            // TIERED PDF EXTRACTION (pdf.js-extract → Unstructured → Azure)
             // ============================================================
             
-            async function extractWithUnpdf(file) {
-                const { extractText } = await import('unpdf');
-                const arrayBuffer = await file.arrayBuffer();
-                const result = await extractText(arrayBuffer);
-                return { 
-                    text: result.text, 
-                    method: 'unpdf', 
-                    confidence: 85,
-                    pageCount: result.pages?.length || 1
-                };
-            }
-
-            // ============================================================
-            // AZURE EXTRACTION (via Cloudflare Worker proxy)
-            // ============================================================
-            
-            async function extractWithAzure(file) {
+            async function extractWithPDFjsExtract(file) {
                 const formData = new FormData();
                 formData.append('file', file);
                 
-                const response = await fetch(`${PARSER_WORKER_URL}/azure`, {
+                const response = await fetch(PDFJS_EXTRACT_URL, {
                     method: 'POST',
                     body: formData
                 });
@@ -991,13 +891,98 @@
                 if (data.success && data.text && data.text.length > 100) {
                     return { 
                         text: data.text, 
-                        method: data.method || 'azure', 
+                        method: 'pdfjs-extract', 
+                        confidence: data.confidence || 85,
+                        pages: data.pages || 1,
+                        quality: data.quality || null
+                    };
+                }
+                throw new Error(data.error || 'pdf.js-extract extraction failed');
+            }
+            
+            async function extractWithUnstructured(file) {
+                const formData = new FormData();
+                formData.append('file', file);
+                
+                const response = await fetch(UNSTRUCTURED_URL, {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const data = await response.json();
+                
+                if (data.success && data.text && data.text.length > 100) {
+                    return { 
+                        text: data.text, 
+                        method: 'unstructured', 
+                        confidence: data.confidence || 90,
+                        pages: data.pages || 1,
+                        elements: data.elements || 0
+                    };
+                }
+                throw new Error(data.error || 'Unstructured extraction failed');
+            }
+            
+            async function extractWithAzure(file) {
+                const formData = new FormData();
+                formData.append('file', file);
+                
+                const response = await fetch(AZURE_URL, {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const data = await response.json();
+                
+                if (data.success && data.text && data.text.length > 100) {
+                    return { 
+                        text: data.text, 
+                        method: 'azure', 
                         confidence: data.confidence || 95,
-                        pageCount: data.pages || 1,
+                        pages: data.pages || 1,
                         quality: data.quality || null
                     };
                 }
                 throw new Error(data.error || 'Azure extraction failed');
+            }
+            
+            async function extractWithTieredFallback(file) {
+                const errors = [];
+                
+                // Tier 1: pdf.js-extract (free, local, coordinates)
+                try {
+                    console.log('📄 Tier 1: Trying pdf.js-extract...');
+                    const result = await extractWithPDFjsExtract(file);
+                    console.log(`✅ pdf.js-extract successful: ${result.text.length} chars`);
+                    return result;
+                } catch (error) {
+                    console.warn('pdf.js-extract failed:', error.message);
+                    errors.push(`pdf.js-extract: ${error.message}`);
+                }
+                
+                // Tier 2: Unstructured (free API)
+                try {
+                    console.log('📄 Tier 2: Trying Unstructured...');
+                    const result = await extractWithUnstructured(file);
+                    console.log(`✅ Unstructured successful: ${result.text.length} chars`);
+                    return result;
+                } catch (error) {
+                    console.warn('Unstructured failed:', error.message);
+                    errors.push(`Unstructured: ${error.message}`);
+                }
+                
+                // Tier 3: Azure (fallback)
+                try {
+                    console.log('📄 Tier 3: Trying Azure...');
+                    const result = await extractWithAzure(file);
+                    console.log(`✅ Azure successful: ${result.text.length} chars`);
+                    return result;
+                } catch (error) {
+                    console.warn('Azure failed:', error.message);
+                    errors.push(`Azure: ${error.message}`);
+                }
+                
+                throw new Error(`All extraction methods failed: ${errors.join('; ')}`);
             }
 
             // ============================================================
@@ -1016,7 +1001,7 @@
                                     text: result.value, 
                                     method: 'docx', 
                                     confidence: 98,
-                                    pageCount: 1
+                                    pages: 1
                                 });
                             } else {
                                 reject(new Error('Could not extract text from DOCX'));
@@ -1031,11 +1016,31 @@
             }
 
             // ============================================================
-            // PDF HEALTH DETECTION (from extracted text)
+            // STAGE 2 PARSER (Raw Text → Structured JSON)
+            // ============================================================
+            
+            async function callStage2Parser(rawText) {
+                const response = await fetch(STAGE_2_PARSER_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ resumeText: rawText })
+                });
+                
+                const data = await response.json();
+                
+                if (data.error) {
+                    console.warn('Stage 2 parser error:', data.error);
+                    return null;
+                }
+                
+                return data;
+            }
+
+            // ============================================================
+            // PDF HEALTH ANALYSIS
             // ============================================================
             
             function analyzeExtractedHealth(text, pageCount, extractionMethod, qualityData = null) {
-                // If Azure returned quality data, use it directly
                 if (qualityData && qualityData.issues && qualityData.issues.length > 0) {
                     return {
                         score: qualityData.score || 70,
@@ -1050,11 +1055,9 @@
                     };
                 }
                 
-                // Otherwise, perform local analysis
                 const issues = [];
                 let score = 100;
                 
-                // Page count check
                 if (pageCount > 2) {
                     issues.push({
                         type: 'page_count',
@@ -1065,7 +1068,6 @@
                     score -= (pageCount - 2) * 3;
                 }
                 
-                // Text length check
                 if (text.length < 500) {
                     issues.push({
                         type: 'short_text',
@@ -1076,7 +1078,6 @@
                     score -= 20;
                 }
                 
-                // Character corruption detection
                 const nonPrintableCount = (text.match(/[^\x20-\x7E\x0A\x0D\x09]/g) || []).length;
                 if (nonPrintableCount > 5) {
                     issues.push({
@@ -1088,24 +1089,11 @@
                     score -= 30;
                 }
                 
-                // Multi-column detection (simple heuristic)
-                const lines = text.split('\n');
-                const shortLines = lines.filter(l => l.trim().length > 0 && l.length < 40).length;
-                if (shortLines > lines.length * 0.3 && lines.length > 20) {
-                    issues.push({
-                        type: 'multi_column',
-                        severity: 'medium',
-                        message: 'Possible multi-column layout detected',
-                        fix: 'Convert to single-column format for better ATS compatibility'
-                    });
-                    score -= 15;
-                }
-                
                 return {
                     score: Math.max(0, Math.min(100, Math.round(score))),
                     issues: issues,
                     extractionMethod: extractionMethod,
-                    extractionConfidence: extractionMethod === 'azure' ? 95 : 80
+                    extractionConfidence: extractionMethod === 'azure' ? 95 : 85
                 };
             }
             
@@ -1122,28 +1110,7 @@
             }
 
             // ============================================================
-            // STAGE 1 PARSER (Structured Resume)
-            // ============================================================
-            
-            const callStage1Parser = async (cleanText) => {
-                const response = await fetch(PARSER_WORKER_URL, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ resumeText: cleanText })
-                });
-                
-                const data = await response.json();
-                
-                if (data.error) {
-                    console.warn('Stage 1 parser error:', data.error);
-                    return null;
-                }
-                
-                return data;
-            };
-
-            // ============================================================
-            // RESUME UPLOAD HANDLER (Unpdf + Azure fallback + DOCX)
+            // RESUME UPLOAD HANDLER (Tiered Extraction + Stage 2 Parser)
             // ============================================================
             
             const handleResumeFileUpload = async (e) => {
@@ -1168,7 +1135,7 @@
                         setAnalysisStage('Extracting from Microsoft Word...');
                         const result = await extractWithDocx(file);
                         extractedText = result.text;
-                        extractionInfo = { method: 'docx', confidence: result.confidence, pageCount: result.pageCount };
+                        extractionInfo = { method: 'docx', confidence: result.confidence, pageCount: result.pages };
                         setExtractionMethod('📄 Microsoft Word');
                     }
                     // Handle TXT files
@@ -1183,40 +1150,33 @@
                         extractionInfo = { method: 'plain-text', confidence: 100, pageCount: 1 };
                         setExtractionMethod('📄 Plain Text');
                     }
-                    // Handle PDF files
+                    // Handle PDF files with tiered fallback
                     else if (file.type === 'application/pdf') {
-                        // Try Unpdf first (modern, free)
-                        try {
-                            setAnalysisStage('Extracting with unpdf...');
-                            const result = await extractWithUnpdf(file);
-                            extractedText = result.text;
-                            extractionInfo = { method: 'unpdf', confidence: result.confidence, pageCount: result.pageCount };
-                            setExtractionMethod('📄 unpdf (Modern)');
-                            console.log(`✅ Unpdf extraction successful (${extractedText.length} chars)`);
-                        } catch (unpdfError) {
-                            console.warn('Unpdf failed, falling back to Azure:', unpdfError);
-                            setAnalysisStage('Unpdf failed, trying Azure...');
-                            const result = await extractWithAzure(file);
-                            extractedText = result.text;
-                            extractionInfo = { 
-                                method: result.method, 
-                                confidence: result.confidence, 
-                                pageCount: result.pageCount,
-                                quality: result.quality
+                        setAnalysisStage('Extracting PDF (Tier 1: pdf.js-extract)...');
+                        const result = await extractWithTieredFallback(file);
+                        extractedText = result.text;
+                        extractionInfo = { 
+                            method: result.method, 
+                            confidence: result.confidence, 
+                            pageCount: result.pages,
+                            quality: result.quality
+                        };
+                        
+                        // Set extraction method display
+                        if (result.method === 'pdfjs-extract') setExtractionMethod('📄 pdf.js-extract (Coordinates)');
+                        else if (result.method === 'unstructured') setExtractionMethod('✅ Unstructured API');
+                        else if (result.method === 'azure') setExtractionMethod('✅ Azure Document Intelligence');
+                        
+                        // Store Azure health data if available
+                        if (result.quality) {
+                            azureHealthData = {
+                                score: result.quality.score,
+                                issues: result.quality.issues || [],
+                                needsAzure: result.quality.needs_azure
                             };
-                            setExtractionMethod(result.method === 'azure' ? '✅ Azure Document Intelligence' : '📄 Azure (Fallback)');
-                            
-                            // Store Azure health data for display
-                            if (result.quality) {
-                                azureHealthData = {
-                                    score: result.quality.score,
-                                    issues: result.quality.issues || [],
-                                    needsAzure: result.quality.needs_azure
-                                };
-                                setAzureHealth(azureHealthData);
-                            }
-                            console.log(`✅ Azure extraction successful (${extractedText.length} chars)`);
+                            setAzureHealth(azureHealthData);
                         }
+                        console.log(`✅ Extraction successful via ${result.method}: ${extractedText.length} chars`);
                     } else {
                         setResumeParseError('Unsupported file type. Please upload .txt, .pdf, or .docx');
                         setLoading(false);
@@ -1239,14 +1199,14 @@
                         extractionInfo.quality
                     );
                     
-                    // Step 2: Call Stage 1 Parser to get structured resume
-                    setAnalysisStage('Parsing resume structure...');
-                    const structured = await callStage1Parser(extractedText);
+                    // Call Stage 2 Parser to convert raw text to structured JSON
+                    setAnalysisStage('Parsing resume structure (Stage 2)...');
+                    const structured = await callStage2Parser(extractedText);
                     if (structured && !structured.error) {
                         setStructuredResume(structured);
-                        console.log('✅ Stage 1 parser successful - structured resume ready');
+                        console.log('✅ Stage 2 parser successful - structured resume ready');
                     } else {
-                        console.warn('⚠️ Stage 1 parser failed, will use raw text');
+                        console.warn('⚠️ Stage 2 parser failed, will use raw text');
                     }
                     
                     setResumeText(extractedText);
@@ -1258,7 +1218,7 @@
                             file_size: file.size,
                             text_length: extractedText.length,
                             extraction_method: extractionInfo?.method,
-                            stage1_success: !!structured,
+                            stage2_success: !!structured,
                             pdf_health_score: healthData.score
                         });
                     }
@@ -1281,7 +1241,7 @@
             };
 
             // ============================================================
-            // JD UPLOAD HANDLER (Supports DOCX as well)
+            // JD UPLOAD HANDLER (DOCX support)
             // ============================================================
             
             const handleJobDescriptionFileUpload = async (e) => {
@@ -1304,10 +1264,8 @@
                             reader.readAsText(file);
                         });
                     } else if (file.type === 'application/pdf') {
-                        // Use unpdf for JD extraction
-                        const { extractText } = await import('unpdf');
-                        const arrayBuffer = await file.arrayBuffer();
-                        const result = await extractText(arrayBuffer);
+                        // Use tiered extraction for JD as well
+                        const result = await extractWithTieredFallback(file);
                         extractedText = result.text;
                     } else if (file.name.endsWith('.docx') || file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
                         const arrayBuffer = await file.arrayBuffer();
@@ -1370,7 +1328,6 @@
                     if (!isComparisonMode) {
                         setAnalysisStage('Processing with aggregator...');
                         
-                        // Build analysis data for aggregator
                         const llmAnalysis = {
                             header_issues: [],
                             missing_keywords: [],
@@ -1416,7 +1373,6 @@
                             throw new Error(aggregatorData.error);
                         }
                         
-                        // Calculate interview likelihood
                         const interviewScore = calculateInterviewLikelihood(aggregatorData);
                         aggregatorData.interview_likelihood_score = interviewScore;
                         aggregatorData.pdf_health = resumePdfHealth;
@@ -1440,7 +1396,7 @@
                         return;
                     }
                     
-                    // For Comparison Mode: Use existing LLM worker (preserved)
+                    // For Comparison Mode: Use existing LLM worker
                     const workerUrl = COMPARE_WORKER_URL;
                     
                     const payload = {
@@ -1469,7 +1425,6 @@
                         jsonText = jsonText.replace(/```json\n?/g, '').replace(/```\n?/g, '');
                         const parsedResult = JSON.parse(jsonText);
                         
-                        // Calculate and override interview likelihood with new formula
                         const newInterviewScore = calculateInterviewLikelihood(parsedResult);
                         parsedResult.interview_likelihood_score = newInterviewScore;
                         
@@ -1695,8 +1650,10 @@
                 const containerClass = isCritical ? 'pdf-health-critical' : 'pdf-health-good';
                 const extractionNote = resumePdfHealth.extractionMethod === 'azure' 
                     ? '✅ Text extracted via Azure Document Intelligence (high accuracy)'
-                    : resumePdfHealth.extractionMethod === 'unpdf'
-                    ? '📄 Text extracted via unpdf (modern extraction)'
+                    : resumePdfHealth.extractionMethod === 'unstructured'
+                    ? '📄 Text extracted via Unstructured API'
+                    : resumePdfHealth.extractionMethod === 'pdfjs-extract'
+                    ? '📄 Text extracted via pdf.js-extract (with coordinates)'
                     : resumePdfHealth.extractionMethod === 'docx'
                     ? '📄 Microsoft Word document processed'
                     : resumePdfHealth.extractionMethod === 'plain-text'
@@ -1735,7 +1692,7 @@
             return (
                 <div className="container">
                     <div className="header">
-                        <h1>🎯 ATS Resume Scanner V8.2.1</h1>
+                        <h1>🎯 ATS Resume Scanner V8.3</h1>
                         <p>AI-powered analysis of formatting, keywords, and recruiter psychology</p>
                     </div>
 
@@ -1878,7 +1835,6 @@
                                     </div>
                                 )}
 
-                                {/* Azure Health Section */}
                                 {renderAzureHealthSection()}
 
                                 <div className="score-grid">
@@ -1929,7 +1885,6 @@
                                     </div>
                                 </div>
 
-                                {/* Should You Apply? Box */}
                                 {(() => {
                                     const interviewScore = result.interview_likelihood_score || calculateInterviewLikelihood(result);
                                     const recommendation = getApplyRecommendation(interviewScore);
@@ -1945,7 +1900,6 @@
                                     );
                                 })()}
 
-                                {/* Interview Likelihood Tooltip Explainer */}
                                 <div className="tooltip" style={{ textAlign: 'center', marginBottom: '15px', fontSize: '12px', color: '#6b7280' }}>
                                     📊 How is Interview Likelihood calculated?
                                     <span className="tooltip-text">
@@ -2470,10 +2424,8 @@
                                         setJobDescriptionParseError(null);
                                         setEmail('');
                                         setEmailSent(false);
-                                        setShowCredibilityExplainer(false);
-                                        setShowSemanticExplainer(false);
-                                        setShowPositionExplainer(false);
                                         setShowCredibilityShortExplainer(false);
+                                        setShowPositionExplainer(false);
                                         setAnalysisStage('');
                                     }}
                                     style={{ marginTop: '30px', background: '#6b7280', width: '100%', padding: '16px', borderRadius: '8px', border: 'none', color: 'white', fontWeight: '600', cursor: 'pointer' }}
