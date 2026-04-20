@@ -981,7 +981,7 @@
                 const formData = new FormData();
                 formData.append('file', file);
                 
-                const response = await fetch(`${PARSER_WORKER_URL}/extract`, {
+                const response = await fetch(`${PARSER_WORKER_URL}/azure`, {
                     method: 'POST',
                     body: formData
                 });
