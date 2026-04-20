@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ATS Resume Scanner V8.3 | JKH Consulting</title>
+    <title>ATS Resume Scanner V8.4 | JKH Consulting</title>
     <meta name="description" content="Get your resume scored by an AI-powered ATS scanner. Instant feedback on formatting, keywords, and what recruiters actually see.">
     
     <!-- Google Analytics -->
@@ -31,7 +31,7 @@
     <!-- Contentsquare (Hotjar) Tracking -->
     <script src="https://t.contentsquare.net/uxa/5f94e8837c5a5.js"></script>
     
-    <!-- PDF.js Library for PDF Extraction (Fallback) -->
+    <!-- PDF.js Library for PDF Extraction -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
     <script>
         pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
@@ -370,55 +370,127 @@
             opacity: 1;
         }
 
-        .ats-health-critical {
-            background: #fef2f2;
-            border: 2px solid #ef4444;
-            border-radius: 16px;
-            padding: 20px;
-            margin: 20px 0;
-        }
-        .ats-health-warning {
-            background: #fffbeb;
-            border: 2px solid #f59e0b;
-            border-radius: 16px;
-            padding: 20px;
-            margin: 20px 0;
-        }
-
-        .pdf-health-critical {
-            background: #fef2f2;
-            border: 2px solid #ef4444;
+        /* PDF Quality Warning Styles */
+        .pdf-quality-warning {
             border-radius: 16px;
             padding: 24px;
             margin: 20px 0;
         }
-        .pdf-health-good {
-            background: #f8fafc;
-            border: 1px solid #e2e8f0;
-            border-radius: 16px;
-            padding: 20px;
-            margin: 20px 0;
+        .pdf-quality-warning.critical {
+            background: #fef2f2;
+            border: 2px solid #ef4444;
         }
-
-        .pdf-issue {
-            padding: 12px;
-            margin: 10px 0;
-            border-radius: 8px;
+        .pdf-quality-warning.warning {
+            background: #fffbeb;
+            border: 2px solid #f59e0b;
+        }
+        .warning-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+        .warning-icon {
+            font-size: 32px;
+        }
+        .quality-score {
+            margin: 16px 0;
+        }
+        .score-bar {
+            background: #e5e7eb;
+            border-radius: 10px;
+            height: 10px;
+            overflow: hidden;
+            margin: 8px 0;
+        }
+        .score-fill {
+            background: linear-gradient(90deg, #ef4444, #f59e0b, #10b981);
+            height: 100%;
+            border-radius: 10px;
+            transition: width 0.5s ease;
+        }
+        .issues-list {
+            margin: 16px 0;
+            padding: 16px;
             background: white;
+            border-radius: 12px;
         }
-        .pdf-issue-header {
-            font-weight: 600;
-            margin-bottom: 5px;
+        .issues-list ul {
+            margin-left: 20px;
+            margin-top: 8px;
         }
-        .pdf-issue-message {
-            font-size: 13px;
-            color: #4b5563;
-            margin-bottom: 5px;
+        .issues-list li {
+            margin-bottom: 12px;
         }
-        .pdf-issue-fix {
+        .fix-suggestion {
             font-size: 12px;
             color: #10b981;
+            display: block;
+            margin-top: 4px;
         }
+        .builder-rating {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-left: 10px;
+        }
+        .rating-excellent { background: #d1fae5; color: #065f46; }
+        .rating-good { background: #d1fae5; color: #065f46; }
+        .rating-poor { background: #fee2e2; color: #991b1b; }
+        .rating-avoid { background: #fef2f2; color: #991b1b; border: 1px solid #ef4444; }
+        
+        .action-buttons {
+            display: flex;
+            gap: 12px;
+            margin: 16px 0;
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+        .btn-secondary {
+            background: #f3f4f6;
+            color: #374151;
+            border: 1px solid #d1d5db;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+        .comparison-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin: 16px 0;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .before, .after {
+            background: #f9fafb;
+            padding: 16px;
+            border-radius: 12px;
+            font-family: monospace;
+            font-size: 12px;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+        .junk-highlight {
+            font-family: monospace;
+            font-size: 12px;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+        .junk-stream { background: #fee2e2; color: #991b1b; }
+        .junk-random { background: #fed7aa; color: #9b2c1d; }
+        .junk-metadata { background: #e9d5ff; color: #6b21a5; }
+        .junk-duplicate { background: #fef3c7; color: #92400e; }
 
         .credibility-container {
             background: #f8fafc;
@@ -768,16 +840,6 @@
             color: #0369a1;
             margin-left: 10px;
         }
-        .extraction-badge {
-            display: inline-block;
-            padding: 2px 8px;
-            border-radius: 12px;
-            font-size: 10px;
-            font-weight: 600;
-            margin-left: 8px;
-            background: #e0e7ff;
-            color: #3730a3;
-        }
 
         @media (max-width: 768px) {
             .dual-input-grid { grid-template-columns: 1fr; }
@@ -787,6 +849,8 @@
             .score-grid { grid-template-columns: repeat(2, 1fr); }
             .semantic-stats { grid-template-columns: repeat(2, 1fr); }
             .bloom-stats { grid-template-columns: repeat(2, 1fr); }
+            .comparison-grid { grid-template-columns: 1fr; }
+            .action-buttons { flex-direction: column; }
             .tooltip .tooltip-text { width: 220px; margin-left: -110px; }
         }
     </style>
@@ -802,13 +866,246 @@
         const COMPARE_WORKER_URL = "https://ats-proxy.keron62.workers.dev";
         const AGGREGATOR_URL = "https://ats-aggregator.keron62.workers.dev";
         
-        // Extraction Pipeline URLs (Tiered Fallback)
+        // Extraction Pipeline URLs
         const PDFJS_EXTRACT_URL = "https://ats-pdfjs-extract.keron62.workers.dev";
         const UNSTRUCTURED_URL = "https://unstructured-parser.keron62.workers.dev";
         const AZURE_URL = "https://ats-parser.keron62.workers.dev/azure";
         
-        // Stage 2 Parser (Structured JSON)
+        // Stage 2 Parser
         const STAGE_2_PARSER_URL = "https://ats-stage-2-parser.keron62.workers.dev";
+
+        // ============================================================
+        // RESUME BUILDER DATABASE
+        // ============================================================
+        
+        const RESUME_BUILDERS = {
+            'createfreecv': { name: 'CreateFreeCV.com', rating: 5, label: 'Excellent', class: 'rating-excellent', recommendation: 'Highly recommended - produces clean ATS-friendly PDFs' },
+            'microsoft_word': { name: 'Microsoft Word', rating: 5, label: 'Excellent', class: 'rating-excellent', recommendation: 'Gold standard - use "Save as PDF"' },
+            'google_docs': { name: 'Google Docs', rating: 4, label: 'Good', class: 'rating-good', recommendation: 'Good - use "Download as PDF"' },
+            'adobe_indesign': { name: 'Adobe InDesign', rating: 4, label: 'Good', class: 'rating-good', recommendation: 'Good if exported correctly' },
+            'latex': { name: 'LaTeX', rating: 5, label: 'Excellent', class: 'rating-excellent', recommendation: 'Excellent for technical resumes' },
+            'canva': { name: 'Canva', rating: 2, label: 'Poor', class: 'rating-poor', recommendation: 'Avoid for ATS - injects obfuscated code' },
+            'novoresume': { name: 'Novoresume', rating: 1, label: 'Avoid', class: 'rating-avoid', recommendation: 'Not recommended - known to break ATS systems' },
+            'zety': { name: 'Zety', rating: 1, label: 'Avoid', class: 'rating-avoid', recommendation: 'Avoid - produces corrupted PDFs' },
+            'resume_io': { name: 'Resume.io', rating: 1, label: 'Avoid', class: 'rating-avoid', recommendation: 'Not recommended - poor ATS compatibility' },
+            'enhancv': { name: 'EnhanCV', rating: 2, label: 'Poor', class: 'rating-poor', recommendation: 'Poor ATS compatibility' },
+            'wix': { name: 'Wix', rating: 1, label: 'Avoid', class: 'rating-avoid', recommendation: 'Avoid for resumes' },
+            'unknown': { name: 'Unknown Builder', rating: 3, label: 'Unknown', class: 'rating-poor', recommendation: 'Test your PDF before applying' }
+        };
+
+        function detectResumeBuilder(junkPatterns, text, metadata) {
+            // Canva detection
+            if ((text.includes('xmp:') && text.includes('rdf:')) || junkPatterns.includes('stream_operators')) {
+                return RESUME_BUILDERS['canva'];
+            }
+            // Microsoft Word detection (good)
+            if (text.includes('/Creator( Microsoft Word)') || text.includes('Microsoft Word')) {
+                return RESUME_BUILDERS['microsoft_word'];
+            }
+            // Google Docs detection
+            if (text.includes('Google Docs') || text.includes('/Producer( Google Docs)')) {
+                return RESUME_BUILDERS['google_docs'];
+            }
+            // CreateFreeCV detection (excellent)
+            if (text.toLowerCase().includes('createfreecv')) {
+                return RESUME_BUILDERS['createfreecv'];
+            }
+            // Novoresume detection
+            if (junkPatterns.includes('random_strings') && junkPatterns.includes('metadata')) {
+                return RESUME_BUILDERS['novoresume'];
+            }
+            return RESUME_BUILDERS['unknown'];
+        }
+
+        // ============================================================
+        // PDF QUALITY ANALYSIS FUNCTION
+        // ============================================================
+        
+        function analyzePDFQuality(text, metadata = {}) {
+            const issues = [];
+            let score = 100;
+            let junkPatterns = [];
+            
+            // Pattern 1: PDF stream operators
+            const streamPattern = /\b\d+\s+\d+\s+\d+\s+\d+\s+\d+\s+\d+\s+d1\b/g;
+            const streamMatches = text.match(streamPattern) || [];
+            if (streamMatches.length > 0) {
+                issues.push({
+                    type: 'PDF Stream Obfuscation',
+                    severity: 'high',
+                    message: `Detected ${streamMatches.length} PDF stream operators - common in "Print to PDF" output`,
+                    fix: 'Use "Save as PDF" instead of "Print to PDF"'
+                });
+                score -= Math.min(30, streamMatches.length * 5);
+                junkPatterns.push('stream_operators');
+            }
+            
+            // Pattern 2: XMP/RDF metadata injection
+            if (text.includes('xmp:') || text.includes('rdf:') || text.includes('?xpacket')) {
+                issues.push({
+                    type: 'Metadata Injection',
+                    severity: 'medium',
+                    message: 'Embedded XMP/RDF metadata detected - adds noise to ATS parsing',
+                    fix: 'Export from Microsoft Word directly, not from browser'
+                });
+                score -= 15;
+                junkPatterns.push('metadata');
+            }
+            
+            // Pattern 3: Random short alphanumeric strings
+            const randomStringPattern = /\b[A-Z0-9]{4,6}\b/g;
+            const randomMatches = text.match(randomStringPattern) || [];
+            const suspiciousRandom = randomMatches.filter(s => !isRealWord(s));
+            if (suspiciousRandom.length > 10) {
+                issues.push({
+                    type: 'Obfuscated Content',
+                    severity: 'medium',
+                    message: `${suspiciousRandom.length} suspicious short strings detected - PDF may be corrupted`,
+                    fix: 'Re-save PDF from original document using "Save As" not "Print"'
+                });
+                score -= 20;
+                junkPatterns.push('random_strings');
+            }
+            
+            // Pattern 4: High ratio of numbers to letters
+            const numbers = (text.match(/\d/g) || []).length;
+            const letters = (text.match(/[A-Za-z]/g) || []).length;
+            const ratio = letters / (numbers + 1);
+            if (ratio < 0.5 && numbers > 200) {
+                issues.push({
+                    type: 'High Noise Ratio',
+                    severity: 'high',
+                    message: `High number-to-text ratio (${numbers} numbers vs ${letters} letters) - PDF likely generated incorrectly`,
+                    fix: 'Use Microsoft Word → Save as PDF (not Print to PDF)'
+                });
+                score -= 25;
+                junkPatterns.push('high_noise');
+            }
+            
+            // Pattern 5: Duplicated words
+            const duplicatePattern = /\b(\w+)\s+\1\s+\1\b/g;
+            const duplicates = text.match(duplicatePattern) || [];
+            if (duplicates.length > 0) {
+                issues.push({
+                    type: 'Word Duplication',
+                    severity: 'low',
+                    message: `${duplicates.length} instances of word duplication detected`,
+                    fix: 'PDF conversion corrupted the text flow'
+                });
+                score -= 5 * Math.min(10, duplicates.length);
+                junkPatterns.push('duplication');
+            }
+            
+            // Pattern 6: Missing line breaks
+            const lines = text.split('\n');
+            const longLines = lines.filter(l => l.length > 200 && !l.includes('•'));
+            if (longLines.length > 3) {
+                issues.push({
+                    type: 'Missing Line Breaks',
+                    severity: 'medium',
+                    message: `${longLines.length} lines exceed 200 characters without breaks - achievements may be concatenated`,
+                    fix: 'Ensure PDF preserves line breaks by using proper PDF export'
+                });
+                score -= 10;
+                junkPatterns.push('no_breaks');
+            }
+            
+            // Pattern 7: Corrupted special characters
+            const corruptedEntities = (text.match(/&amp;|&#39;|&quot;|&lt;|&gt;/g) || []).length;
+            if (corruptedEntities > 5) {
+                issues.push({
+                    type: 'Corrupted Entities',
+                    severity: 'low',
+                    message: `${corruptedEntities} corrupted HTML entities detected (e.g., &amp; instead of &)`,
+                    fix: 'Use a different PDF export method'
+                });
+                score -= 5;
+                junkPatterns.push('entities');
+            }
+            
+            score = Math.max(0, Math.min(100, Math.round(score)));
+            
+            const detectedBuilder = detectResumeBuilder(junkPatterns, text, metadata);
+            
+            return {
+                score: score,
+                is_clean: score >= 70,
+                needs_fallback: score < 70,
+                issues: issues,
+                junk_patterns: junkPatterns,
+                detected_builder: detectedBuilder,
+                stats: {
+                    total_chars: text.length,
+                    numbers_count: numbers,
+                    letters_count: letters,
+                    junk_estimate_percent: Math.round((1 - (letters / (text.length || 1))) * 100),
+                    junk_chars: text.length - letters,
+                    clean_chars: letters
+                },
+                recommendation: getRecommendation(score, junkPatterns, detectedBuilder)
+            };
+        }
+        
+        function isRealWord(word) {
+            const commonWords = ['the', 'and', 'for', 'are', 'was', 'were', 'this', 'that', 'have', 'from', 'with', 'your', 'will', 'can', 'not', 'you', 'amp', '39', 'quot'];
+            return commonWords.includes(word.toLowerCase()) || word.length > 6;
+        }
+        
+        function getRecommendation(score, patterns, builder) {
+            if (score >= 90) return { action: 'none', message: 'PDF quality is excellent. No action needed.' };
+            if (score >= 70) return { action: 'review', message: 'PDF has minor issues. Consider re-saving for best results.' };
+            
+            if (builder.rating <= 2) {
+                return {
+                    action: 'critical',
+                    message: `Your PDF was created with ${builder.name}, which is known to produce ATS-unfriendly PDFs.`,
+                    urgency: 'high',
+                    alternative: 'CreateFreeCV.com or Microsoft Word'
+                };
+            }
+            
+            if (patterns.includes('stream_operators') || patterns.includes('high_noise')) {
+                return {
+                    action: 'critical',
+                    message: 'PDF contains significant formatting corruption. Re-save using: Microsoft Word → File → Save As → PDF',
+                    urgency: 'high',
+                    alternative: 'Microsoft Word'
+                };
+            }
+            
+            return {
+                action: 'recommended',
+                message: 'PDF has formatting issues that may affect ATS parsing. For best results, export from Microsoft Word directly.',
+                urgency: 'medium',
+                alternative: 'Microsoft Word or CreateFreeCV.com'
+            };
+        }
+
+        function highlightJunk(text, junkPatterns) {
+            let highlighted = text;
+            
+            if (junkPatterns.includes('stream_operators')) {
+                highlighted = highlighted.replace(/\b\d+\s+\d+\s+\d+\s+\d+\s+\d+\s+\d+\s+d1\b/g,
+                    match => `<span class="junk-stream">${match}</span>`);
+            }
+            
+            if (junkPatterns.includes('random_strings')) {
+                highlighted = highlighted.replace(/\b[A-Z0-9]{4,8}\b/g,
+                    match => `<span class="junk-random">${match}</span>`);
+            }
+            
+            if (junkPatterns.includes('metadata')) {
+                highlighted = highlighted.replace(/xmp:|rdf:|rdf:Description|\?xpacket/g,
+                    match => `<span class="junk-metadata">${match}</span>`);
+            }
+            
+            if (junkPatterns.includes('duplication')) {
+                highlighted = highlighted.replace(/\b(\w+)\s+\1\s+\1\b/g,
+                    match => `<span class="junk-duplicate">${match}</span>`);
+            }
+            
+            return highlighted;
+        }
 
         function ATSScanner() {
             const [isComparisonMode, setIsComparisonMode] = useState(false);
@@ -819,7 +1116,8 @@
             const [resumeParseError, setResumeParseError] = useState(null);
             const [resumePdfHealth, setResumePdfHealth] = useState(null);
             const [extractionMethod, setExtractionMethod] = useState(null);
-            const [azureHealth, setAzureHealth] = useState(null);
+            const [pdfQuality, setPdfQuality] = useState(null);
+            const [showComparison, setShowComparison] = useState(false);
             const [structuredResume, setStructuredResume] = useState(null);
             
             // Job Description state
@@ -874,7 +1172,7 @@
             }
 
             // ============================================================
-            // TIERED PDF EXTRACTION (pdf.js-extract → Unstructured → Azure)
+            // PDF EXTRACTION FUNCTIONS
             // ============================================================
             
             async function extractWithPDFjsExtract(file) {
@@ -900,29 +1198,6 @@
                 throw new Error(data.error || 'pdf.js-extract extraction failed');
             }
             
-            async function extractWithUnstructured(file) {
-                const formData = new FormData();
-                formData.append('file', file);
-                
-                const response = await fetch(UNSTRUCTURED_URL, {
-                    method: 'POST',
-                    body: formData
-                });
-                
-                const data = await response.json();
-                
-                if (data.success && data.text && data.text.length > 100) {
-                    return { 
-                        text: data.text, 
-                        method: 'unstructured', 
-                        confidence: data.confidence || 90,
-                        pages: data.pages || 1,
-                        elements: data.elements || 0
-                    };
-                }
-                throw new Error(data.error || 'Unstructured extraction failed');
-            }
-            
             async function extractWithAzure(file) {
                 const formData = new FormData();
                 formData.append('file', file);
@@ -945,49 +1220,6 @@
                 }
                 throw new Error(data.error || 'Azure extraction failed');
             }
-            
-            async function extractWithTieredFallback(file) {
-                const errors = [];
-                
-                // Tier 1: pdf.js-extract (free, local, coordinates)
-                try {
-                    console.log('📄 Tier 1: Trying pdf.js-extract...');
-                    const result = await extractWithPDFjsExtract(file);
-                    console.log(`✅ pdf.js-extract successful: ${result.text.length} chars`);
-                    return result;
-                } catch (error) {
-                    console.warn('pdf.js-extract failed:', error.message);
-                    errors.push(`pdf.js-extract: ${error.message}`);
-                }
-                
-                // Tier 2: Unstructured (free API)
-                try {
-                    console.log('📄 Tier 2: Trying Unstructured...');
-                    const result = await extractWithUnstructured(file);
-                    console.log(`✅ Unstructured successful: ${result.text.length} chars`);
-                    return result;
-                } catch (error) {
-                    console.warn('Unstructured failed:', error.message);
-                    errors.push(`Unstructured: ${error.message}`);
-                }
-                
-                // Tier 3: Azure (fallback)
-                try {
-                    console.log('📄 Tier 3: Trying Azure...');
-                    const result = await extractWithAzure(file);
-                    console.log(`✅ Azure successful: ${result.text.length} chars`);
-                    return result;
-                } catch (error) {
-                    console.warn('Azure failed:', error.message);
-                    errors.push(`Azure: ${error.message}`);
-                }
-                
-                throw new Error(`All extraction methods failed: ${errors.join('; ')}`);
-            }
-
-            // ============================================================
-            // DOCX EXTRACTION (Microsoft Word support)
-            // ============================================================
             
             async function extractWithDocx(file) {
                 return new Promise((resolve, reject) => {
@@ -1014,6 +1246,64 @@
                     reader.readAsArrayBuffer(file);
                 });
             }
+            
+            async function extractWithQualityCheck(file) {
+                let pdfjsResult = null;
+                let quality = null;
+                let rawText = null;
+                
+                // Handle DOCX files directly (no quality check needed)
+                if (file.name.endsWith('.docx') || file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
+                    const result = await extractWithDocx(file);
+                    return result;
+                }
+                
+                // Handle TXT files directly
+                if (file.type === 'text/plain') {
+                    const reader = new FileReader();
+                    const text = await new Promise((resolve, reject) => {
+                        reader.onload = (event) => resolve(event.target.result);
+                        reader.onerror = () => reject(new Error('Failed to read text file'));
+                        reader.readAsText(file);
+                    });
+                    return { text: text, method: 'plain-text', confidence: 100, pages: 1 };
+                }
+                
+                // Step 1: Try pdf.js-extract (fast detection)
+                try {
+                    pdfjsResult = await extractWithPDFjsExtract(file);
+                    rawText = pdfjsResult.text;
+                    quality = analyzePDFQuality(rawText);
+                    
+                    pdfjsResult.quality_analysis = quality;
+                    pdfjsResult.is_clean = quality.is_clean;
+                    
+                } catch (error) {
+                    console.warn('pdf.js-extract failed:', error);
+                    quality = { is_clean: false, needs_fallback: true, score: 0, issues: [], stats: { junk_chars: 0, clean_chars: 0 } };
+                }
+                
+                // Step 2: If quality is poor, fall back to Azure
+                if (quality.needs_fallback) {
+                    console.log('⚠️ Poor PDF quality detected, falling back to Azure...');
+                    
+                    try {
+                        const azureResult = await extractWithAzure(file);
+                        azureResult.quality_analysis = quality;
+                        azureResult.was_fallback = true;
+                        azureResult.raw_text = rawText;
+                        azureResult.fallback_reason = 'PDF quality issues detected';
+                        return azureResult;
+                    } catch (azureError) {
+                        console.warn('Azure fallback failed:', azureError);
+                        if (pdfjsResult) return pdfjsResult;
+                        throw azureError;
+                    }
+                }
+                
+                // Step 3: Quality is good, return pdf.js result
+                return pdfjsResult;
+            }
 
             // ============================================================
             // STAGE 2 PARSER (Raw Text → Structured JSON)
@@ -1037,80 +1327,7 @@
             }
 
             // ============================================================
-            // PDF HEALTH ANALYSIS
-            // ============================================================
-            
-            function analyzeExtractedHealth(text, pageCount, extractionMethod, qualityData = null) {
-                if (qualityData && qualityData.issues && qualityData.issues.length > 0) {
-                    return {
-                        score: qualityData.score || 70,
-                        issues: qualityData.issues.map(issue => ({
-                            type: issue.type,
-                            severity: issue.severity,
-                            message: issue.message,
-                            fix: issue.fix || getFixForIssue(issue.type)
-                        })),
-                        extractionMethod: extractionMethod,
-                        extractionConfidence: 95
-                    };
-                }
-                
-                const issues = [];
-                let score = 100;
-                
-                if (pageCount > 2) {
-                    issues.push({
-                        type: 'page_count',
-                        severity: 'low',
-                        message: `${pageCount} pages detected`,
-                        fix: 'Consider condensing to 2 pages'
-                    });
-                    score -= (pageCount - 2) * 3;
-                }
-                
-                if (text.length < 500) {
-                    issues.push({
-                        type: 'short_text',
-                        severity: 'medium',
-                        message: `Only ${text.length} characters extracted`,
-                        fix: 'Ensure your PDF contains selectable text, not just images'
-                    });
-                    score -= 20;
-                }
-                
-                const nonPrintableCount = (text.match(/[^\x20-\x7E\x0A\x0D\x09]/g) || []).length;
-                if (nonPrintableCount > 5) {
-                    issues.push({
-                        type: 'corruption',
-                        severity: 'high',
-                        message: `${nonPrintableCount} non-printable characters detected`,
-                        fix: 'Re-save the PDF from the original source'
-                    });
-                    score -= 30;
-                }
-                
-                return {
-                    score: Math.max(0, Math.min(100, Math.round(score))),
-                    issues: issues,
-                    extractionMethod: extractionMethod,
-                    extractionConfidence: extractionMethod === 'azure' ? 95 : 85
-                };
-            }
-            
-            function getFixForIssue(type) {
-                const fixes = {
-                    'scanned': 'Use OCR to extract text or recreate as a text-based PDF',
-                    'multi_column': 'Convert to single-column format for ATS compatibility',
-                    'headers_detected': 'Move contact information to the body of your resume',
-                    'corruption': 'Re-save the PDF from the original source',
-                    'short_text': 'Ensure the PDF contains selectable text',
-                    'page_count': 'Consider condensing to 2 pages'
-                };
-                return fixes[type] || 'Review and fix the issue';
-            }
-
-            // ============================================================
-            // RESUME UPLOAD HANDLER (Tiered Extraction + Stage 2 Parser)
+            // RESUME UPLOAD HANDLER
             // ============================================================
             
             const handleResumeFileUpload = async (e) => {
@@ -1120,69 +1337,48 @@
                 setResumeFileName(file.name);
                 setResumeParseError(null);
                 setExtractionMethod(null);
-                setAzureHealth(null);
+                setPdfQuality(null);
                 setStructuredResume(null);
+                setShowComparison(false);
                 setLoading(true);
                 setAnalysisStage('Processing file...');
 
                 try {
                     let extractedText = '';
                     let extractionInfo = null;
-                    let azureHealthData = null;
+                    let qualityAnalysis = null;
                     
-                    // Handle DOCX files
-                    if (file.name.endsWith('.docx') || file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
-                        setAnalysisStage('Extracting from Microsoft Word...');
-                        const result = await extractWithDocx(file);
-                        extractedText = result.text;
-                        extractionInfo = { method: 'docx', confidence: result.confidence, pageCount: result.pages };
-                        setExtractionMethod('📄 Microsoft Word');
+                    // Use quality-checked extraction
+                    const result = await extractWithQualityCheck(file);
+                    extractedText = result.text;
+                    extractionInfo = { 
+                        method: result.method, 
+                        confidence: result.confidence, 
+                        pages: result.pages || 1
+                    };
+                    
+                    // Store quality analysis if available
+                    if (result.quality_analysis) {
+                        qualityAnalysis = result.quality_analysis;
+                        setPdfQuality(qualityAnalysis);
                     }
-                    // Handle TXT files
-                    else if (file.type === 'text/plain') {
-                        setAnalysisStage('Reading text file...');
-                        const reader = new FileReader();
-                        extractedText = await new Promise((resolve, reject) => {
-                            reader.onload = (event) => resolve(event.target.result);
-                            reader.onerror = () => reject(new Error('Failed to read text file'));
-                            reader.readAsText(file);
-                        });
-                        extractionInfo = { method: 'plain-text', confidence: 100, pageCount: 1 };
+                    
+                    // Set extraction method display
+                    if (result.method === 'pdfjs-extract') {
+                        if (qualityAnalysis && !qualityAnalysis.is_clean) {
+                            setExtractionMethod('📄 pdf.js-extract (Junk detected - using Azure)');
+                        } else {
+                            setExtractionMethod('📄 pdf.js-extract (Clean)');
+                        }
+                    } else if (result.method === 'azure') {
+                        setExtractionMethod('✅ Azure Document Intelligence (Cleaned)');
+                    } else if (result.method === 'docx') {
+                        setExtractionMethod('📄 Microsoft Word');
+                    } else if (result.method === 'plain-text') {
                         setExtractionMethod('📄 Plain Text');
                     }
-                    // Handle PDF files with tiered fallback
-                    else if (file.type === 'application/pdf') {
-                        setAnalysisStage('Extracting PDF (Tier 1: pdf.js-extract)...');
-                        const result = await extractWithTieredFallback(file);
-                        extractedText = result.text;
-                        extractionInfo = { 
-                            method: result.method, 
-                            confidence: result.confidence, 
-                            pageCount: result.pages,
-                            quality: result.quality
-                        };
-                        
-                        // Set extraction method display
-                        if (result.method === 'pdfjs-extract') setExtractionMethod('📄 pdf.js-extract (Coordinates)');
-                        else if (result.method === 'unstructured') setExtractionMethod('✅ Unstructured API');
-                        else if (result.method === 'azure') setExtractionMethod('✅ Azure Document Intelligence');
-                        
-                        // Store Azure health data if available
-                        if (result.quality) {
-                            azureHealthData = {
-                                score: result.quality.score,
-                                issues: result.quality.issues || [],
-                                needsAzure: result.quality.needs_azure
-                            };
-                            setAzureHealth(azureHealthData);
-                        }
-                        console.log(`✅ Extraction successful via ${result.method}: ${extractedText.length} chars`);
-                    } else {
-                        setResumeParseError('Unsupported file type. Please upload .txt, .pdf, or .docx');
-                        setLoading(false);
-                        setAnalysisStage('');
-                        return;
-                    }
+                    
+                    console.log(`✅ Extraction successful via ${result.method}: ${extractedText.length} chars`);
                     
                     if (!extractedText || extractedText.trim().length < 50) {
                         setResumeParseError('Could not extract enough text from the file. Try pasting as text.');
@@ -1191,35 +1387,24 @@
                         return;
                     }
                     
-                    // Analyze extracted text health
-                    const healthData = analyzeExtractedHealth(
-                        extractedText, 
-                        extractionInfo.pageCount, 
-                        extractionInfo.method,
-                        extractionInfo.quality
-                    );
-                    
-                    // Call Stage 2 Parser to convert raw text to structured JSON
-                    setAnalysisStage('Parsing resume structure (Stage 2)...');
+                    // Call Stage 2 Parser
+                    setAnalysisStage('Parsing resume structure...');
                     const structured = await callStage2Parser(extractedText);
                     if (structured && !structured.error) {
                         setStructuredResume(structured);
-                        console.log('✅ Stage 2 parser successful - structured resume ready');
-                    } else {
-                        console.warn('⚠️ Stage 2 parser failed, will use raw text');
+                        console.log('✅ Stage 2 parser successful');
                     }
                     
                     setResumeText(extractedText);
-                    setResumePdfHealth(healthData);
                     
                     if (window.amplitude) {
                         amplitude.track('File Uploaded', {
                             file_type: file.type || file.name.split('.').pop(),
                             file_size: file.size,
                             text_length: extractedText.length,
-                            extraction_method: extractionInfo?.method,
-                            stage2_success: !!structured,
-                            pdf_health_score: healthData.score
+                            extraction_method: result.method,
+                            pdf_quality_score: qualityAnalysis?.score || 100,
+                            stage2_success: !!structured
                         });
                     }
                     
@@ -1229,19 +1414,13 @@
                 } catch (error) {
                     console.error('Upload error:', error);
                     setResumeParseError(error.message);
-                    if (window.amplitude) {
-                        amplitude.track('File Upload Error', {
-                            error_message: error.message,
-                            file_type: file.type || file.name.split('.').pop()
-                        });
-                    }
                     setLoading(false);
                     setAnalysisStage('');
                 }
             };
 
             // ============================================================
-            // JD UPLOAD HANDLER (DOCX support)
+            // JD UPLOAD HANDLER (Simple pdf.js for JDs)
             // ============================================================
             
             const handleJobDescriptionFileUpload = async (e) => {
@@ -1264,9 +1443,17 @@
                             reader.readAsText(file);
                         });
                     } else if (file.type === 'application/pdf') {
-                        // Use tiered extraction for JD as well
-                        const result = await extractWithTieredFallback(file);
-                        extractedText = result.text;
+                        // Use simple pdf.js for JD (clean extraction expected)
+                        const arrayBuffer = await file.arrayBuffer();
+                        const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+                        let fullText = '';
+                        for (let i = 1; i <= pdf.numPages; i++) {
+                            const page = await pdf.getPage(i);
+                            const textContent = await page.getTextContent();
+                            const pageText = textContent.items.map(item => item.str).join(' ');
+                            fullText += pageText + '\n';
+                        }
+                        extractedText = fullText;
                     } else if (file.name.endsWith('.docx') || file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
                         const arrayBuffer = await file.arrayBuffer();
                         const result = await mammoth.extractRawText({ arrayBuffer: arrayBuffer });
@@ -1297,7 +1484,7 @@
             };
 
             // ============================================================
-            // ANALYZE RESUME (With Aggregator for Resume-Only Mode)
+            // ANALYZE RESUME
             // ============================================================
             
             const analyzeResume = async () => {
@@ -1315,16 +1502,7 @@
                 setResult(null);
                 setAnalysisStage('Analyzing with AI...');
 
-                if (window.amplitude) {
-                    amplitude.track('Resume Analysis Started', {
-                        mode: isComparisonMode ? 'comparison' : 'standard',
-                        timestamp: new Date().toISOString(),
-                        has_structured_resume: !!structuredResume
-                    });
-                }
-
                 try {
-                    // For Resume-Only Mode: Use Aggregator for scoring
                     if (!isComparisonMode) {
                         setAnalysisStage('Processing with aggregator...');
                         
@@ -1375,85 +1553,54 @@
                         
                         const interviewScore = calculateInterviewLikelihood(aggregatorData);
                         aggregatorData.interview_likelihood_score = interviewScore;
-                        aggregatorData.pdf_health = resumePdfHealth;
+                        aggregatorData.pdf_quality = pdfQuality;
                         aggregatorData.extraction_method = extractionMethod;
                         aggregatorData.structured_used = !!structuredResume;
                         aggregatorData.provider_used = "Aggregator (Deterministic)";
                         
                         setResult(aggregatorData);
                         
-                        if (window.amplitude) {
-                            amplitude.track('Resume Analysis Completed', {
-                                total_score: aggregatorData.total_ats_score,
-                                credibility_score: aggregatorData.credibility_score,
-                                mode: 'standard',
-                                aggregator_used: true
-                            });
-                        }
-                        
-                        setLoading(false);
-                        setAnalysisStage('');
-                        return;
-                    }
-                    
-                    // For Comparison Mode: Use existing LLM worker
-                    const workerUrl = COMPARE_WORKER_URL;
-                    
-                    const payload = {
-                        resume: structuredResume,
-                        resumeText: resumeText,
-                        resumePdfHealth: resumePdfHealth,
-                        jobDescriptionText: jobDescriptionText
-                    };
-                    
-                    const response = await fetch(workerUrl, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(payload)
-                    });
-
-                    setAnalysisStage('Processing results...');
-
-                    const data = await response.json();
-                    
-                    if (data.error) {
-                        throw new Error(data.error || 'Analysis failed');
-                    }
-
-                    if (data.candidates && data.candidates[0] && data.candidates[0].content) {
-                        let jsonText = data.candidates[0].content.parts[0].text.trim();
-                        jsonText = jsonText.replace(/```json\n?/g, '').replace(/```\n?/g, '');
-                        const parsedResult = JSON.parse(jsonText);
-                        
-                        const newInterviewScore = calculateInterviewLikelihood(parsedResult);
-                        parsedResult.interview_likelihood_score = newInterviewScore;
-                        
-                        parsedResult.pdf_health = resumePdfHealth;
-                        parsedResult.extraction_method = extractionMethod;
-                        parsedResult.structured_used = !!structuredResume;
-                        parsedResult.azure_health = azureHealth;
-                        
-                        setResult(parsedResult);
-                        
-                        if (window.amplitude) {
-                            amplitude.track('Resume Analysis Completed', {
-                                total_score: parsedResult.total_ats_score,
-                                credibility_score: parsedResult.credibility_score,
-                                fit_score: parsedResult.fit_score,
-                                interview_score: newInterviewScore,
-                                mode: 'comparison',
-                                structured_used: !!structuredResume
-                            });
-                        }
                     } else {
-                        throw new Error('Invalid response format');
+                        const workerUrl = COMPARE_WORKER_URL;
+                        
+                        const payload = {
+                            resume: structuredResume,
+                            resumeText: resumeText,
+                            jobDescriptionText: jobDescriptionText
+                        };
+                        
+                        const response = await fetch(workerUrl, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(payload)
+                        });
+
+                        const data = await response.json();
+                        
+                        if (data.error) {
+                            throw new Error(data.error || 'Analysis failed');
+                        }
+
+                        if (data.candidates && data.candidates[0] && data.candidates[0].content) {
+                            let jsonText = data.candidates[0].content.parts[0].text.trim();
+                            jsonText = jsonText.replace(/```json\n?/g, '').replace(/```\n?/g, '');
+                            const parsedResult = JSON.parse(jsonText);
+                            
+                            const interviewScore = calculateInterviewLikelihood(parsedResult);
+                            parsedResult.interview_likelihood_score = interviewScore;
+                            parsedResult.pdf_quality = pdfQuality;
+                            parsedResult.extraction_method = extractionMethod;
+                            parsedResult.structured_used = !!structuredResume;
+                            
+                            setResult(parsedResult);
+                        } else {
+                            throw new Error('Invalid response format');
+                        }
                     }
+                    
                 } catch (error) {
                     console.error('Analysis error:', error);
                     alert('Error analyzing resume. Please try again.');
-                    if (window.amplitude) {
-                        amplitude.track('Resume Analysis Error', { error: error.message });
-                    }
                 } finally {
                     setLoading(false);
                     setAnalysisStage('');
@@ -1584,107 +1731,100 @@
                 return null;
             };
 
-            const getPdfHealthScore = () => {
-                if (!resumePdfHealth?.issues) return null;
-                const issues = resumePdfHealth.issues;
-                let score = 100;
-                for (const issue of issues) {
-                    if (issue.severity === 'high') score -= 15;
-                    else if (issue.severity === 'medium') score -= 8;
-                    else if (issue.severity === 'low') score -= 3;
-                }
-                return Math.max(0, Math.min(100, score));
-            };
-
-            const isPdfHealthCritical = () => {
-                const score = getPdfHealthScore();
-                return score !== null && score < 70;
-            };
-
-            const getPdfHealthLabel = () => {
-                const score = getPdfHealthScore();
-                if (score === null) return null;
-                if (score >= 90) return 'Excellent';
-                if (score >= 80) return 'Good';
-                if (score >= 70) return 'Moderate';
-                if (score >= 60) return 'Poor';
-                return 'Critical';
-            };
-
-            const getPdfHealthColor = () => {
-                const score = getPdfHealthScore();
-                if (score === null) return '#6b7280';
-                if (score >= 80) return '#10b981';
-                if (score >= 70) return '#f59e0b';
-                return '#ef4444';
-            };
-
-            const renderAzureHealthSection = () => {
-                if (!azureHealth || !azureHealth.issues || azureHealth.issues.length === 0) return null;
+            // PDF Quality Warning Component
+            const renderPDFQualityWarning = () => {
+                if (!pdfQuality || pdfQuality.is_clean) return null;
                 
-                const isCritical = azureHealth.score < 70;
-                const containerClass = isCritical ? 'ats-health-critical' : 'ats-health-warning';
+                const isCritical = pdfQuality.score < 50;
+                const builder = pdfQuality.detected_builder;
                 
                 return (
-                    <div className={containerClass}>
-                        <h3>{isCritical ? '⚠️ PDF Health Issues Detected' : '📋 PDF Health Report'}</h3>
-                        <p><strong>Health Score: {azureHealth.score}/100</strong></p>
-                        {azureHealth.issues.map((issue, idx) => (
-                            <div key={idx} className="health-issue">
-                                <div className="pdf-issue-header">
-                                    {issue.severity === 'high' ? '🔴' : issue.severity === 'medium' ? '🟡' : '🟢'} {issue.message}
-                                </div>
-                                <div className="health-fix">{issue.fix}</div>
-                            </div>
-                        ))}
-                    </div>
-                );
-            };
-
-            const renderPdfHealthSection = (isCritical) => {
-                if (!resumePdfHealth?.issues || resumePdfHealth.issues.length === 0) return null;
-                
-                const score = getPdfHealthScore();
-                const label = getPdfHealthLabel();
-                
-                const containerClass = isCritical ? 'pdf-health-critical' : 'pdf-health-good';
-                const extractionNote = resumePdfHealth.extractionMethod === 'azure' 
-                    ? '✅ Text extracted via Azure Document Intelligence (high accuracy)'
-                    : resumePdfHealth.extractionMethod === 'unstructured'
-                    ? '📄 Text extracted via Unstructured API'
-                    : resumePdfHealth.extractionMethod === 'pdfjs-extract'
-                    ? '📄 Text extracted via pdf.js-extract (with coordinates)'
-                    : resumePdfHealth.extractionMethod === 'docx'
-                    ? '📄 Microsoft Word document processed'
-                    : resumePdfHealth.extractionMethod === 'plain-text'
-                    ? '📄 Plain text file uploaded'
-                    : null;
-                
-                return (
-                    <div className={containerClass}>
-                        <h3>{isCritical ? '⚠️ CRITICAL PDF HEALTH ISSUES' : '📄 PDF Health Report'}</h3>
-                        <p style={{ marginBottom: '15px' }}>
-                            <strong>Score: {score}/100 ({label})</strong>
-                            {isCritical && ' — Fix these issues before submitting your resume.'}
+                    <div className={`pdf-quality-warning ${isCritical ? 'critical' : 'warning'}`}>
+                        <div className="warning-header">
+                            <span className="warning-icon">⚠️</span>
+                            <h3>PDF Quality Issues Detected</h3>
+                            {builder && builder.rating <= 2 && (
+                                <span className={`builder-rating ${builder.class}`}>{builder.label}</span>
+                            )}
+                        </div>
+                        
+                        <p>
+                            <strong>Your PDF Quality Score: {pdfQuality.score}/100</strong>
+                            {pdfQuality.score < 50 ? ' (Critical - Will affect ATS parsing)' : ' (Warning - May affect ATS parsing)'}
                         </p>
-                        {extractionNote && (
-                            <div className="info-box" style={{ marginBottom: '15px', fontSize: '13px', padding: '8px 12px' }}>
-                                {extractionNote}
-                                {structuredResume && <span style={{ marginLeft: '8px' }}>✓ Structured parsing active</span>}
+                        
+                        {builder && builder.rating <= 2 && (
+                            <div className="issues-list">
+                                <h4>📋 Resume Builder Detected:</h4>
+                                <p><strong>{builder.name}</strong> - {builder.recommendation}</p>
+                                <p style={{ marginTop: '8px' }}>
+                                    <strong>✅ Recommended alternative:</strong> {builder.rating <= 2 ? 'CreateFreeCV.com or Microsoft Word' : 'Continue using this builder'}
+                                </p>
                             </div>
                         )}
-                        {resumePdfHealth.issues.map((issue, idx) => {
-                            let icon = '🟡';
-                            if (issue.severity === 'high') icon = '🔴';
-                            else if (issue.severity === 'low') icon = '🟢';
-                            
-                            return (
-                                <div key={idx} className="pdf-issue">
-                                    <div className="pdf-issue-header">{icon} {issue.message}</div>
-                                    <div className="pdf-issue-message">{issue.fix}</div>
+                        
+                        <div className="issues-list">
+                            <h4>⚠️ Specific Issues Found:</h4>
+                            <ul>
+                                {pdfQuality.issues.slice(0, 4).map((issue, i) => (
+                                    <li key={i}>
+                                        <strong>{issue.type}:</strong> {issue.message}
+                                        <br />
+                                        <span className="fix-suggestion">→ {issue.fix}</span>
+                                    </li>
+                                ))}
+                            </ul>
+                            {pdfQuality.issues.length > 4 && (
+                                <p><small>+ {pdfQuality.issues.length - 4} more issues</small></p>
+                            )}
+                        </div>
+                        
+                        <div className="quality-score">
+                            <div className="score-bar">
+                                <div className="score-fill" style={{ width: `${pdfQuality.score}%` }}></div>
+                            </div>
+                            <span>PDF Quality Score: {pdfQuality.score}/100</span>
+                        </div>
+                        
+                        <div className="action-buttons">
+                            <button 
+                                className="btn-primary"
+                                onClick={() => setShowComparison(!showComparison)}
+                            >
+                                {showComparison ? 'Hide' : 'Show'} ATS Eye View
+                            </button>
+                        </div>
+                        
+                        {showComparison && (
+                            <div className="comparison-grid">
+                                <div className="before">
+                                    <strong>🔴 What ATS Actually Sees (Raw):</strong>
+                                    <div className="junk-highlight" 
+                                         dangerouslySetInnerHTML={{ 
+                                             __html: highlightJunk(resumeText.substring(0, 1500), pdfQuality.junk_patterns) 
+                                         }} />
+                                    <div className="stats" style={{ marginTop: '8px' }}>
+                                        <span className="bad">🗑️ Junk: {pdfQuality.stats.junk_chars} chars</span>
+                                        <span className="good" style={{ marginLeft: '8px' }}>📝 Content: {pdfQuality.stats.clean_chars} chars</span>
+                                    </div>
                                 </div>
-                            );
-                        })}
+                                <div className="after">
+                                    <strong>✅ What It Should Look Like (Cleaned):</strong>
+                                    <div style={{ whiteSpace: 'pre-wrap', fontFamily: 'monospace', fontSize: '12px' }}>
+                                        {resumeText.replace(/[^\x20-\x7E\x0A\x0D]/g, '').substring(0, 1500)}...
+                                    </div>
+                                    <div className="stats" style={{ marginTop: '8px' }}>
+                                        <span className="good">✅ Clean text ready for ATS</span>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                        
+                        <div className="disclaimer-box" style={{ marginTop: '16px' }}>
+                            <strong>📝 Why this matters:</strong> Recruiters spend 6-10 seconds scanning resumes.
+                            If your PDF is garbled, they'll move on regardless of your qualifications.
+                            We've automatically cleaned your resume for this analysis, but you should fix the original PDF.
+                        </div>
                     </div>
                 );
             };
@@ -1692,7 +1832,7 @@
             return (
                 <div className="container">
                     <div className="header">
-                        <h1>🎯 ATS Resume Scanner V8.3</h1>
+                        <h1>🎯 ATS Resume Scanner V8.4</h1>
                         <p>AI-powered analysis of formatting, keywords, and recruiter psychology</p>
                     </div>
 
@@ -1835,7 +1975,8 @@
                                     </div>
                                 )}
 
-                                {renderAzureHealthSection()}
+                                {/* PDF Quality Warning - New V8.4 Feature */}
+                                {renderPDFQualityWarning()}
 
                                 <div className="score-grid">
                                     <div className="score-card">
@@ -1845,16 +1986,6 @@
                                         </div>
                                         <div className="score-label">/100 ({getScoreGrade(result.total_ats_score)})</div>
                                     </div>
-
-                                    {resumePdfHealth && resumePdfHealth.issues && (
-                                        <div className="score-card">
-                                            <h4>📄 PDF Health Score</h4>
-                                            <div className="score-value" style={{ color: getPdfHealthColor() }}>
-                                                {getPdfHealthScore()}
-                                            </div>
-                                            <div className="score-label">/100 ({getPdfHealthLabel()})</div>
-                                        </div>
-                                    )}
 
                                     {result.fit_score !== null && (
                                         <div className="score-card">
@@ -1910,8 +2041,6 @@
                                     </span>
                                 </div>
 
-                                {isPdfHealthCritical() && renderPdfHealthSection(true)}
-
                                 {result.credibility_score !== undefined && (
                                     <div className="credibility-container">
                                         <div className="credibility-header">
@@ -1950,75 +2079,6 @@
                                                 A high ATS score with low credibility means your resume is well-formatted but may be inflated.
                                             </div>
                                         </div>
-
-                                        {result.credibility_analysis?.career_plausibility_flags?.length > 0 && (
-                                            <div style={{ marginTop: '20px' }}>
-                                                <h4 style={{ marginBottom: '10px', color: '#1a365d' }}>📈 Career Trajectory Flags</h4>
-                                                {result.credibility_analysis.career_plausibility_flags.map((flag, idx) => (
-                                                    <div key={idx} className="credibility-flag-item">
-                                                        <strong>⚠️ {flag.type?.replace(/_/g, ' ').toUpperCase() || 'Flag'}</strong>
-                                                        <div style={{ marginTop: '5px' }}>{flag.issue}</div>
-                                                        <div className="flag-suggestion">💡 {flag.suggestion}</div>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        )}
-
-                                        {result.credibility_analysis?.education_title_flags?.length > 0 && (
-                                            <div style={{ marginTop: '20px' }}>
-                                                <h4 style={{ marginBottom: '10px', color: '#1a365d' }}>🎓 Education-Title Flags</h4>
-                                                {result.credibility_analysis.education_title_flags.map((flag, idx) => (
-                                                    <div key={idx} className="credibility-flag-item">
-                                                        <strong>⚠️ {flag.type?.replace(/_/g, ' ').toUpperCase() || 'Flag'}</strong>
-                                                        <div>{flag.issue}</div>
-                                                        <div className="flag-suggestion">💡 {flag.suggestion}</div>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        )}
-
-                                        {result.credibility_analysis?.metric_plausibility_flags?.length > 0 && (
-                                            <div style={{ marginTop: '20px' }}>
-                                                <h4 style={{ marginBottom: '10px', color: '#1a365d' }}>📊 Metric Plausibility Flags</h4>
-                                                {result.credibility_analysis.metric_plausibility_flags.map((flag, idx) => (
-                                                    <div key={idx} className="credibility-flag-item">
-                                                        <strong>⚠️ {flag.type?.replace(/_/g, ' ').toUpperCase() || 'Flag'}</strong>
-                                                        <div>{flag.issue}</div>
-                                                        <div className="flag-suggestion">💡 {flag.suggestion}</div>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        )}
-
-                                        {result.credibility_analysis?.acting_title_flags?.length > 0 && (
-                                            <div style={{ marginTop: '20px' }}>
-                                                <h4 style={{ marginBottom: '10px', color: '#1a365d' }}>🎭 "Acting" / Interim Title Flags</h4>
-                                                {result.credibility_analysis.acting_title_flags.map((flag, idx) => (
-                                                    <div key={idx} className="credibility-flag-item">
-                                                        <strong>⚠️ {flag.type?.replace(/_/g, ' ').toUpperCase() || 'Flag'}</strong>
-                                                        <div>{flag.issue}</div>
-                                                        <div className="flag-suggestion">💡 {flag.suggestion}</div>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        )}
-
-                                        {result.credibility_analysis?.promotion_signals?.length > 0 && (
-                                            <div style={{ marginTop: '20px' }}>
-                                                <h4 style={{ marginBottom: '10px', color: '#1a365d' }}>📈 Promotion Signals</h4>
-                                                {result.credibility_analysis.promotion_signals.map((signal, idx) => (
-                                                    <div key={idx} className="success-message" style={{ background: '#ecfdf5', borderLeft: '4px solid #10b981' }}>
-                                                        ✅ {signal}
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        )}
-
-                                        {result.credibility_analysis?.recency_note && (
-                                            <div style={{ marginTop: '15px', fontSize: '13px', color: '#6b7280', fontStyle: 'italic' }}>
-                                                📅 {result.credibility_analysis.recency_note}
-                                            </div>
-                                        )}
                                     </div>
                                 )}
 
@@ -2108,32 +2168,6 @@
                                                 Think of this as a confidence score for your positioning.
                                             </div>
                                         </div>
-
-                                        {result.semantic_analysis.flags?.length > 0 && (
-                                            <div style={{ marginTop: '20px' }}>
-                                                <h4 style={{ marginBottom: '10px', color: '#1a365d' }}>Semantic Flags</h4>
-                                                {result.semantic_analysis.flags.map((flag, idx) => (
-                                                    <div key={idx} className="flag-item">
-                                                        <strong>⚠️ {flag.type.replace('_', ' ').toUpperCase()}</strong>
-                                                        <div style={{ marginTop: '5px' }}>"{flag.original_text}"</div>
-                                                        <div style={{ marginTop: '5px', fontSize: '13px', color: '#ef4444' }}>{flag.issue}</div>
-                                                        <div className="flag-suggestion">💡 {flag.suggestion}</div>
-                                                        {flag.example && <div style={{ marginTop: '5px', color: '#667eea' }}>{flag.example}</div>}
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        )}
-
-                                        {result.semantic_analysis.recommendations?.length > 0 && (
-                                            <div style={{ marginTop: '20px' }}>
-                                                <h4 style={{ marginBottom: '10px', color: '#1a365d' }}>Semantic Recommendations</h4>
-                                                <ul style={{ paddingLeft: '20px' }}>
-                                                    {result.semantic_analysis.recommendations.map((rec, idx) => (
-                                                        <li key={idx} style={{ marginBottom: '8px' }}>{rec}</li>
-                                                    ))}
-                                                </ul>
-                                            </div>
-                                        )}
                                     </div>
                                 )}
 
@@ -2161,94 +2195,6 @@
                                                     <div className="bloom-stat-value" style={{ fontSize: '14px' }}>{result.bloom_analysis.bloom_assessment}</div>
                                                 </div>
                                             </div>
-                                            
-                                            {result.bloom_analysis.bullets_by_level && result.bloom_analysis.bullets_by_level.length > 0 && (
-                                                <div className="bullets-by-level">
-                                                    <strong>Bullets by Cognitive Level:</strong>
-                                                    {result.bloom_analysis.bullets_by_level.map((item, idx) => (
-                                                        <div key={idx} style={{ marginTop: '8px', fontSize: '13px' }}>
-                                                            <span className={`level-badge level-${item.level}`}>Level {item.level}</span>
-                                                            <span>{item.count} bullet{item.count !== 1 ? 's' : ''}</span>
-                                                            {item.example && <span style={{ color: '#6b7280', marginLeft: '10px' }}>— "{item.example.substring(0, 60)}..."</span>}
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                            )}
-
-                                            {result.bloom_analysis.flags?.length > 0 && (
-                                                <div style={{ marginTop: '15px' }}>
-                                                    {result.bloom_analysis.flags.map((flag, idx) => (
-                                                        <div key={idx} className="flag-item">
-                                                            <strong>⚠️ {flag.type?.replace('_', ' ').toUpperCase()}</strong>
-                                                            <div>{flag.issue}</div>
-                                                            <div className="flag-suggestion">💡 {flag.suggestion}</div>
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                            )}
-                                        </div>
-                                    </div>
-                                )}
-
-                                {result.grammar_issues && result.grammar_issues.length > 0 && (
-                                    <div className="v8-section">
-                                        <div className="results-section">
-                                            <h3>📝 Grammar & Spelling Issues</h3>
-                                            {result.grammar_issues.map((issue, idx) => (
-                                                <div key={idx} className="grammar-item">
-                                                    <div className="error-type" style={{ color: issue.error_type === 'spelling' ? '#ef4444' : issue.error_type === 'grammar' ? '#f59e0b' : '#3b82f6' }}>
-                                                        {issue.error_type.toUpperCase()}
-                                                    </div>
-                                                    <div className="original">"{issue.original_text}"</div>
-                                                    <div style={{ fontSize: '12px', marginTop: '5px' }}>❌ {issue.issue}</div>
-                                                    <div className="suggestion">✅ {issue.suggestion}</div>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    </div>
-                                )}
-
-                                {result.missing_tools && result.missing_tools.length > 0 && (
-                                    <div className="v8-section">
-                                        <div className="results-section">
-                                            <h3>🔧 Missing Tools Detected</h3>
-                                            {result.missing_tools.map((tool, idx) => (
-                                                <div key={idx} className="missing-tool-item">
-                                                    <strong>{tool.tool_name}</strong> <span style={{ color: '#6b7280' }}>({tool.category})</span>
-                                                    <div className="flag-suggestion">💡 {tool.suggestion}</div>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    </div>
-                                )}
-
-                                {result.weak_metrics_details && result.weak_metrics_details.length > 0 && (
-                                    <div className="v8-section">
-                                        <div className="results-section">
-                                            <h3>📊 Weak Metrics - Need Improvement</h3>
-                                            {result.weak_metrics_details.map((metric, idx) => (
-                                                <div key={idx} className="weak-metric-item" style={{ borderLeftColor: '#ef4444' }}>
-                                                    <div className="original">"{metric.bullet_text}"</div>
-                                                    <div style={{ fontSize: '12px', marginTop: '5px' }}>❌ {metric.reason}</div>
-                                                    <div className="suggestion">✅ {metric.fix}</div>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    </div>
-                                )}
-
-                                {result.suggested_rewrites && result.suggested_rewrites.length > 0 && (
-                                    <div className="v8-section">
-                                        <div className="results-section">
-                                            <h3>✏️ Suggested Rewrites</h3>
-                                            {result.suggested_rewrites.map((rewrite, idx) => (
-                                                <div key={idx} className="rewrite-item">
-                                                    <div><strong>Original:</strong> "{rewrite.original}"</div>
-                                                    <div style={{ marginTop: '8px' }}>❌ {rewrite.issue}</div>
-                                                    <div style={{ marginTop: '8px', color: '#10b981' }}><strong>Suggested:</strong> "{rewrite.suggested_rewrite}"</div>
-                                                    <div style={{ marginTop: '5px', fontSize: '12px', color: '#6b7280' }}>💡 {rewrite.reason}</div>
-                                                </div>
-                                            ))}
                                         </div>
                                     </div>
                                 )}
@@ -2262,14 +2208,6 @@
                                             </ul>
                                         ) : (<p>No strengths identified</p>)}
 
-                                        {result.market_positioning && (
-                                            <>
-                                                <h3 style={{ marginTop: '20px' }}>📊 Market Positioning</h3>
-                                                <p><strong>Level:</strong> {result.market_positioning.level}</p>
-                                                <p><strong>Assessment:</strong> {result.market_positioning.assessment}</p>
-                                            </>
-                                        )}
-
                                         {result.missing_keywords?.length > 0 && (
                                             <>
                                                 <h3 style={{ marginTop: '20px' }}>🔍 Missing Keywords</h3>
@@ -2277,12 +2215,6 @@
                                                     {result.missing_keywords.map((keyword, idx) => (<li key={idx}>{keyword}</li>))}
                                                 </ul>
                                             </>
-                                        )}
-
-                                        {result.role_adjustment_note && (
-                                            <div style={{ marginTop: '15px', padding: '10px', background: '#e0f2fe', borderRadius: '8px', fontSize: '13px' }}>
-                                                ℹ️ {result.role_adjustment_note}
-                                            </div>
                                         )}
                                     </div>
 
@@ -2337,7 +2269,9 @@
                                     <div className="results-section" style={{ marginTop: '20px' }}>
                                         <h3>📋 All Identified Issues ({result.all_issues.length})</h3>
                                         <table className="issues-table">
-                                            <thead><tr><th>Priority</th><th>Issue</th><th>Location</th><th>How to Fix</th></tr></thead>
+                                            <thead>
+                                                <tr><th>Priority</th><th>Issue</th><th>Location</th><th>How to Fix</th></tr>
+                                            </thead>
                                             <tbody>
                                                 {result.all_issues.map((issue, idx) => (
                                                     <tr key={idx}>
@@ -2351,31 +2285,6 @@
                                         </table>
                                     </div>
                                 )}
-
-                                {result.metric_quality_breakdown && (
-                                    <div className="results-section" style={{ marginTop: '20px' }}>
-                                        <h3>📊 Metric Quality Breakdown</h3>
-                                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '15px', textAlign: 'center' }}>
-                                            <div>
-                                                <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#ef4444' }}>{result.metric_quality_breakdown.weak_count || 0}</div>
-                                                <div style={{ fontSize: '12px', color: '#6b7280' }}>Weak Metrics</div>
-                                            </div>
-                                            <div>
-                                                <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#f59e0b' }}>{result.metric_quality_breakdown.good_count || 0}</div>
-                                                <div style={{ fontSize: '12px', color: '#6b7280' }}>Good Metrics</div>
-                                            </div>
-                                            <div>
-                                                <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#10b981' }}>{result.metric_quality_breakdown.strong_count || 0}</div>
-                                                <div style={{ fontSize: '12px', color: '#6b7280' }}>Strong Metrics</div>
-                                            </div>
-                                        </div>
-                                        <div style={{ marginTop: '15px', textAlign: 'center', fontSize: '13px', color: '#6b7280' }}>
-                                            Overall Quality Score: {result.metric_quality_breakdown.overall_score}/100
-                                        </div>
-                                    </div>
-                                )}
-
-                                {!isPdfHealthCritical() && renderPdfHealthSection(false)}
 
                                 {result.breakdown && (
                                     <div className="results-section" style={{ marginTop: '20px' }}>
@@ -2391,8 +2300,6 @@
                                                 <tr><td>Skills Section</td><td>{result.breakdown.skills_section || 0}</td><td>10</td></tr>
                                                 <tr><td>Length & Brevity</td><td>{result.breakdown.length_brevity || 0}</td><td>5</td></tr>
                                                 <tr><td>Publications & Projects</td><td>{result.breakdown.publications_projects || 0}</td><td>5</td></tr>
-                                                {result.breakdown.recruiter_scan_penalty !== undefined && <tr><td>Recruiter Scan Penalty</td><td>{result.breakdown.recruiter_scan_penalty}</td><td>0</td></tr>}
-                                                {result.breakdown.buzzword_repetition_penalty !== undefined && <tr><td>Buzzword/Repetition Penalty</td><td>{result.breakdown.buzzword_repetition_penalty}</td><td>0</td></tr>}
                                             </tbody>
                                         </table>
                                     </div>
@@ -2415,10 +2322,10 @@
                                         setResumeText('');
                                         setResumeFileName('');
                                         setResumeParseError(null);
-                                        setResumePdfHealth(null);
                                         setExtractionMethod(null);
-                                        setAzureHealth(null);
+                                        setPdfQuality(null);
                                         setStructuredResume(null);
+                                        setShowComparison(false);
                                         setJobDescriptionText('');
                                         setJobDescriptionFileName('');
                                         setJobDescriptionParseError(null);
