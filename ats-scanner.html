@@ -2329,7 +2329,8 @@
             };
 
             const safeGrammarRender = (issue, idx) => {
-                const originalText = (issue.original_text || issue.text || "").replace(/"/g, '');
+                if (!issue) return null;
+                const originalText = String(issue.original_text || issue.text || "Unknown text").replace(/"/g, '');
                 return (
                     <div key={idx} className="grammar-item">
                         <div className="error-type" style={{ color: issue.error_type === 'spelling' ? '#ef4444' : issue.error_type === 'grammar' ? '#f59e0b' : '#3b82f6' }}>
@@ -2647,7 +2648,7 @@
                                         {result.credibility_analysis?.career_plausibility_flags?.length > 0 && (
                                             <div style={{ marginTop: '20px' }}>
                                                 <h4 style={{ marginBottom: '10px', color: '#1a365d' }}>📈 Career Trajectory Flags</h4>
-                                                {result.credibility_analysis.career_plausibility_flags.map((flag, idx) => (
+                                                {result.credibility_analysis.career_plausibility_flags?.map((flag, idx) => (
                                                     <div key={idx} className="credibility-flag-item">
                                                         <strong>⚠️ {flag.type?.replace(/_/g, ' ').toUpperCase() || 'Flag'}</strong>
                                                         <div style={{ marginTop: '5px' }}>{flag.issue}</div>
@@ -2660,7 +2661,7 @@
                                         {result.credibility_analysis?.education_title_flags?.length > 0 && (
                                             <div style={{ marginTop: '20px' }}>
                                                 <h4 style={{ marginBottom: '10px', color: '#1a365d' }}>🎓 Education-Title Flags</h4>
-                                                {result.credibility_analysis.education_title_flags.map((flag, idx) => (
+                                                {result.credibility_analysis.education_title_flags?.map((flag, idx) => (
                                                     <div key={idx} className="credibility-flag-item">
                                                         <strong>⚠️ {flag.type?.replace(/_/g, ' ').toUpperCase() || 'Flag'}</strong>
                                                         <div>{flag.issue}</div>
@@ -2673,7 +2674,7 @@
                                         {result.credibility_analysis?.metric_plausibility_flags?.length > 0 && (
                                             <div style={{ marginTop: '20px' }}>
                                                 <h4 style={{ marginBottom: '10px', color: '#1a365d' }}>📊 Metric Plausibility Flags</h4>
-                                                {result.credibility_analysis.metric_plausibility_flags.map((flag, idx) => (
+                                                {result.credibility_analysis.metric_plausibility_flags?.map((flag, idx) => (
                                                     <div key={idx} className="credibility-flag-item">
                                                         <strong>⚠️ {flag.type?.replace(/_/g, ' ').toUpperCase() || 'Flag'}</strong>
                                                         <div>{flag.issue}</div>
@@ -2805,7 +2806,7 @@
                                         {result.semantic_analysis.flags?.length > 0 && (
                                             <div style={{ marginTop: '20px' }}>
                                                 <h4 style={{ marginBottom: '10px', color: '#1a365d' }}>Semantic Flags</h4>
-                                                {result.semantic_analysis.flags.map((flag, idx) => (
+                                                {result.semantic_analysis.flags?.map((flag, idx) => (
                                                     <div key={idx} className="flag-item">
                                                         <strong>⚠️ {flag.type.replace('_', ' ').toUpperCase()}</strong>
                                                         <div style={{ marginTop: '5px' }}>"{flag.original_text}"</div>
@@ -2821,7 +2822,7 @@
                                             <div style={{ marginTop: '20px' }}>
                                                 <h4 style={{ marginBottom: '10px', color: '#1a365d' }}>Semantic Recommendations</h4>
                                                 <ul style={{ paddingLeft: '20px' }}>
-                                                    {result.semantic_analysis.recommendations.map((rec, idx) => (
+                                                    {result.semantic_analysis.recommendations?.map((rec, idx) => (
                                                         <li key={idx} style={{ marginBottom: '8px' }}>{rec}</li>
                                                     ))}
                                                 </ul>
@@ -2864,7 +2865,7 @@
 
                                             {result.bloom_analysis.flags?.length > 0 && (
                                                 <div style={{ marginTop: '15px' }}>
-                                                    {result.bloom_analysis.flags.map((flag, idx) => (
+                                                    {result.bloom_analysis.flags?.map((flag, idx) => (
                                                         <div key={idx} className="flag-item">
                                                             <strong>⚠️ {flag.type?.replace('_', ' ').toUpperCase()}</strong>
                                                             <div>{flag.issue}</div>
@@ -2881,7 +2882,7 @@
                                     <div className="v8-section">
                                         <div className="results-section">
                                             <h3>📝 Grammar & Spelling Issues</h3>
-                                            {result.grammar_issues.map((issue, idx) => safeGrammarRender(issue, idx))}
+                                            {result.grammar_issues?.filter(issue => issue && (issue.original_text || issue.text))?.map((issue, idx) => safeGrammarRender(issue, idx))}
                                         </div>
                                     </div>
                                 )}
@@ -2918,7 +2919,7 @@
                                         <h3>✅ What's Working Well</h3>
                                         {result.strengths?.length > 0 ? (
                                             <ul className="strengths-list">
-                                                {result.strengths.map((strength, idx) => (<li key={idx}>{strength}</li>))}
+                                                {result.strengths?.map((strength, idx) => (<li key={idx}>{strength}</li>))}
                                             </ul>
                                         ) : (<p>No strengths identified</p>)}
 
@@ -2934,7 +2935,7 @@
                                             <>
                                                 <h3 style={{ marginTop: '20px' }}>🔍 Missing Keywords</h3>
                                                 <ul className="missing-keywords-list">
-                                                    {result.missing_keywords.map((keyword, idx) => (<li key={idx}>{keyword}</li>))}
+                                                    {result.missing_keywords?.map((keyword, idx) => (<li key={idx}>{keyword}</li>))}
                                                 </ul>
                                             </>
                                         )}
@@ -2950,7 +2951,7 @@
                                         <h3>🎯 Role Match Scores</h3>
                                         {result.role_match?.length > 0 ? (
                                             <>
-                                                {result.role_match.map((role, idx) => (
+                                                {result.role_match?.map((role, idx) => (
                                                     <div key={idx} className="role-match-item">
                                                         <span>{role.role}</span>
                                                         <span className={role.match_percentage >= 80 ? "match-strong" : "match-percentage"}>
@@ -2986,7 +2987,7 @@
                                             <>
                                                 <h3 style={{ marginTop: '20px' }}>🔧 Immediate Fixes</h3>
                                                 <ul>
-                                                    {result.immediate_fixes.map((fix, idx) => (<li key={idx} style={{ marginBottom: '10px' }}>{fix}</li>))}
+                                                    {result.immediate_fixes?.map((fix, idx) => (<li key={idx} style={{ marginBottom: '10px' }}>{fix}</li>))}
                                                 </ul>
                                             </>
                                         )}
@@ -2999,7 +3000,7 @@
                                         <table className="issues-table">
                                             <thead><tr><th>Priority</th><th>Issue</th><th>Location</th><th>How to Fix</th></tr></thead>
                                             <tbody>
-                                                {result.all_issues.map((issue, idx) => (
+                                                {result.all_issues?.map((issue, idx) => (
                                                     <tr key={idx}>
                                                         <td className={`priority-${(issue.priority || 'medium').toLowerCase()}`}>{issue.priority || 'Medium'}</td>
                                                         <td><strong>{issue.issue}</strong></td>
