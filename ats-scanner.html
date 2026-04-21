@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ATS Resume Scanner V8.5 | JKH Consulting</title>
+    <title>ATS Resume Scanner V8.4 | JKH Consulting</title>
     <meta name="description" content="Get your resume scored by an AI-powered ATS scanner. Instant feedback on formatting, keywords, and what recruiters actually see.">
     
     <!-- Google Analytics -->
@@ -44,171 +44,846 @@
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; padding: 20px; }
-        .container { max-width: 1200px; margin: 0 auto; }
-        .header { text-align: center; color: white; margin-bottom: 40px; }
-        .header h1 { font-size: 2.5rem; margin-bottom: 10px; }
-        .header p { font-size: 1.2rem; opacity: 0.9; }
-        .card { background: white; border-radius: 16px; padding: 40px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); margin-bottom: 30px; }
-        .mode-switch-container { display: flex; justify-content: center; margin-bottom: 30px; }
-        .mode-switch { background: #f3f4f6; border-radius: 40px; padding: 4px; display: inline-flex; gap: 4px; }
-        .mode-option { padding: 12px 24px; border-radius: 36px; font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.3s; border: none; background: transparent; color: #6b7280; }
-        .mode-option.active { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3); }
-        .dual-input-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; }
-        .input-panel { border: 1px solid #e5e7eb; border-radius: 16px; padding: 20px; background: #f9fafb; }
-        .input-panel h3 { color: #1a365d; margin-bottom: 15px; font-size: 18px; }
-        .input-panel textarea { width: 100%; min-height: 200px; padding: 12px; border: 2px solid #e5e7eb; border-radius: 8px; font-family: 'Courier New', monospace; font-size: 13px; resize: vertical; margin-bottom: 15px; }
-        .input-panel textarea:focus { outline: none; border-color: #667eea; }
-        .file-upload-area { border: 2px dashed #cbd5e1; border-radius: 8px; padding: 15px; text-align: center; cursor: pointer; transition: all 0.3s; background: white; margin-bottom: 15px; }
-        .file-upload-area:hover { border-color: #667eea; background: #f8fafc; }
-        .file-upload-area input { display: none; }
-        .file-upload-icon { font-size: 24px; margin-bottom: 5px; }
-        .file-name { font-size: 12px; color: #6b7280; margin-top: 5px; }
-        .parse-error { background: #fef2f2; border: 1px solid #ef4444; border-radius: 8px; padding: 10px; margin-top: 10px; color: #ef4444; font-size: 12px; }
-        .success-message { background: #ecfdf5; border: 1px solid #10b981; border-radius: 8px; padding: 10px; margin-top: 10px; color: #065f46; font-size: 12px; }
-        .analyze-btn { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; padding: 16px 40px; font-size: 18px; border-radius: 8px; cursor: pointer; font-weight: 600; transition: transform 0.2s; width: 100%; margin-top: 20px; }
-        .analyze-btn:hover { transform: translateY(-2px); box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3); }
-        .analyze-btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
-        .loading { text-align: center; padding: 40px; }
-        .spinner { border: 4px solid #f3f4f6; border-top: 4px solid #667eea; border-radius: 50%; width: 50px; height: 50px; animation: spin 1s linear infinite; margin: 0 auto 20px; }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        .loading-stage { margin-top: 15px; font-size: 14px; color: #6b7280; }
-        .results-container { margin-top: 30px; }
-        .score-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 20px; margin-bottom: 20px; }
-        .score-card { background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%); border-radius: 16px; padding: 20px; text-align: center; border: 1px solid #e2e8f0; }
-        .score-card h4 { font-size: 14px; color: #64748b; margin-bottom: 10px; }
-        .score-value { font-size: 36px; font-weight: 700; color: #1e293b; }
-        .score-label { font-size: 12px; margin-top: 5px; }
-        .risk-badge { display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 40px;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            font-size: 1.2rem;
+            opacity: 0.9;
+        }
+
+        .card {
+            background: white;
+            border-radius: 16px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            margin-bottom: 30px;
+        }
+
+        .mode-switch-container {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 30px;
+        }
+
+        .mode-switch {
+            background: #f3f4f6;
+            border-radius: 40px;
+            padding: 4px;
+            display: inline-flex;
+            gap: 4px;
+        }
+
+        .mode-option {
+            padding: 12px 24px;
+            border-radius: 36px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            border: none;
+            background: transparent;
+            color: #6b7280;
+        }
+
+        .mode-option.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+        }
+
+        .dual-input-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+        }
+
+        .input-panel {
+            border: 1px solid #e5e7eb;
+            border-radius: 16px;
+            padding: 20px;
+            background: #f9fafb;
+        }
+
+        .input-panel h3 {
+            color: #1a365d;
+            margin-bottom: 15px;
+            font-size: 18px;
+        }
+
+        .input-panel textarea {
+            width: 100%;
+            min-height: 200px;
+            padding: 12px;
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            resize: vertical;
+            margin-bottom: 15px;
+        }
+
+        .input-panel textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .file-upload-area {
+            border: 2px dashed #cbd5e1;
+            border-radius: 8px;
+            padding: 15px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            background: white;
+            margin-bottom: 15px;
+        }
+
+        .file-upload-area:hover {
+            border-color: #667eea;
+            background: #f8fafc;
+        }
+
+        .file-upload-area input {
+            display: none;
+        }
+
+        .file-upload-icon {
+            font-size: 24px;
+            margin-bottom: 5px;
+        }
+
+        .file-name {
+            font-size: 12px;
+            color: #6b7280;
+            margin-top: 5px;
+        }
+
+        .parse-error {
+            background: #fef2f2;
+            border: 1px solid #ef4444;
+            border-radius: 8px;
+            padding: 10px;
+            margin-top: 10px;
+            color: #ef4444;
+            font-size: 12px;
+        }
+
+        .success-message {
+            background: #ecfdf5;
+            border: 1px solid #10b981;
+            border-radius: 8px;
+            padding: 10px;
+            margin-top: 10px;
+            color: #065f46;
+            font-size: 12px;
+        }
+
+        .analyze-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 16px 40px;
+            font-size: 18px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: transform 0.2s;
+            width: 100%;
+            margin-top: 20px;
+        }
+
+        .analyze-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+        }
+
+        .analyze-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+        }
+
+        .spinner {
+            border: 4px solid #f3f4f6;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .loading-stage {
+            margin-top: 15px;
+            font-size: 14px;
+            color: #6b7280;
+        }
+
+        .results-container {
+            margin-top: 30px;
+        }
+
+        .score-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .score-card {
+            background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+            border-radius: 16px;
+            padding: 20px;
+            text-align: center;
+            border: 1px solid #e2e8f0;
+        }
+
+        .score-card h4 {
+            font-size: 14px;
+            color: #64748b;
+            margin-bottom: 10px;
+        }
+
+        .score-value {
+            font-size: 36px;
+            font-weight: 700;
+            color: #1e293b;
+        }
+
+        .score-label {
+            font-size: 12px;
+            margin-top: 5px;
+        }
+
+        .risk-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
         .risk-low { background: #d1fae5; color: #065f46; }
         .risk-medium { background: #fed7aa; color: #9b2c1d; }
         .risk-high { background: #fee2e2; color: #991b1b; }
-        .interview-flag { padding: 8px 16px; border-radius: 24px; font-size: 14px; font-weight: 700; text-align: center; margin-top: 8px; }
+
+        .interview-flag {
+            padding: 8px 16px;
+            border-radius: 24px;
+            font-size: 14px;
+            font-weight: 700;
+            text-align: center;
+            margin-top: 8px;
+        }
         .flag-deep-green { background: #064e3b; color: #ecfdf5; }
         .flag-strong-green { background: #10b981; color: white; }
         .flag-green { background: #34d399; color: #064e3b; }
         .flag-orange { background: #f59e0b; color: white; }
         .flag-red { background: #ef4444; color: white; }
-        .apply-box { background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%); border-radius: 16px; padding: 24px; margin: 20px 0; text-align: center; border: 2px solid #e2e8f0; }
-        .apply-box h3 { font-size: 20px; margin-bottom: 12px; }
-        .apply-recommendation { font-size: 28px; font-weight: 700; margin-bottom: 8px; }
-        .apply-context { font-size: 14px; color: #6b7280; }
-        .tooltip { position: relative; display: inline-block; cursor: help; border-bottom: 1px dotted #6b7280; }
-        .tooltip .tooltip-text { visibility: hidden; width: 280px; background-color: #1f2937; color: white; text-align: center; border-radius: 8px; padding: 10px; position: absolute; z-index: 1000; bottom: 125%; left: 50%; margin-left: -140px; font-size: 12px; font-weight: normal; line-height: 1.4; opacity: 0; transition: opacity 0.3s; }
-        .tooltip:hover .tooltip-text { visibility: visible; opacity: 1; }
-        .pdf-quality-warning { border-radius: 16px; padding: 24px; margin: 20px 0; }
-        .pdf-quality-warning.critical { background: #fef2f2; border: 2px solid #ef4444; }
-        .pdf-quality-warning.warning { background: #fffbeb; border: 2px solid #f59e0b; }
-        .warning-header { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; }
-        .warning-icon { font-size: 32px; }
-        .quality-score { margin: 16px 0; }
-        .score-bar { background: #e5e7eb; border-radius: 10px; height: 10px; overflow: hidden; margin: 8px 0; }
-        .score-fill { background: linear-gradient(90deg, #ef4444, #f59e0b, #10b981); height: 100%; border-radius: 10px; transition: width 0.5s ease; }
-        .issues-list { margin: 16px 0; padding: 16px; background: white; border-radius: 12px; }
-        .issues-list ul { margin-left: 20px; margin-top: 8px; }
-        .issues-list li { margin-bottom: 12px; }
-        .fix-suggestion { font-size: 12px; color: #10b981; display: block; margin-top: 4px; }
-        .builder-rating { display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; margin-left: 10px; }
+
+        .apply-box {
+            background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+            border-radius: 16px;
+            padding: 24px;
+            margin: 20px 0;
+            text-align: center;
+            border: 2px solid #e2e8f0;
+        }
+        .apply-box h3 {
+            font-size: 20px;
+            margin-bottom: 12px;
+        }
+        .apply-recommendation {
+            font-size: 28px;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+        .apply-context {
+            font-size: 14px;
+            color: #6b7280;
+        }
+
+        .tooltip {
+            position: relative;
+            display: inline-block;
+            cursor: help;
+            border-bottom: 1px dotted #6b7280;
+        }
+        .tooltip .tooltip-text {
+            visibility: hidden;
+            width: 280px;
+            background-color: #1f2937;
+            color: white;
+            text-align: center;
+            border-radius: 8px;
+            padding: 10px;
+            position: absolute;
+            z-index: 1000;
+            bottom: 125%;
+            left: 50%;
+            margin-left: -140px;
+            font-size: 12px;
+            font-weight: normal;
+            line-height: 1.4;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        .tooltip:hover .tooltip-text {
+            visibility: visible;
+            opacity: 1;
+        }
+
+        /* PDF Quality Warning Styles */
+        .pdf-quality-warning {
+            border-radius: 16px;
+            padding: 24px;
+            margin: 20px 0;
+        }
+        .pdf-quality-warning.critical {
+            background: #fef2f2;
+            border: 2px solid #ef4444;
+        }
+        .pdf-quality-warning.warning {
+            background: #fffbeb;
+            border: 2px solid #f59e0b;
+        }
+        .warning-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+        }
+        .warning-icon {
+            font-size: 32px;
+        }
+        .quality-score {
+            margin: 16px 0;
+        }
+        .score-bar {
+            background: #e5e7eb;
+            border-radius: 10px;
+            height: 10px;
+            overflow: hidden;
+            margin: 8px 0;
+        }
+        .score-fill {
+            background: linear-gradient(90deg, #ef4444, #f59e0b, #10b981);
+            height: 100%;
+            border-radius: 10px;
+            transition: width 0.5s ease;
+        }
+        .issues-list {
+            margin: 16px 0;
+            padding: 16px;
+            background: white;
+            border-radius: 12px;
+        }
+        .issues-list ul {
+            margin-left: 20px;
+            margin-top: 8px;
+        }
+        .issues-list li {
+            margin-bottom: 12px;
+        }
+        .fix-suggestion {
+            font-size: 12px;
+            color: #10b981;
+            display: block;
+            margin-top: 4px;
+        }
+        .builder-rating {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-left: 10px;
+        }
         .rating-excellent { background: #d1fae5; color: #065f46; }
         .rating-good { background: #d1fae5; color: #065f46; }
         .rating-poor { background: #fee2e2; color: #991b1b; }
         .rating-avoid { background: #fef2f2; color: #991b1b; border: 1px solid #ef4444; }
-        .action-buttons { display: flex; gap: 12px; margin: 16px 0; flex-wrap: wrap; }
-        .btn-primary { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 600; }
-        .btn-secondary { background: #f3f4f6; color: #374151; border: 1px solid #d1d5db; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 600; }
-        .comparison-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin: 16px 0; max-height: 500px; overflow-y: auto; }
-        .before, .after { background: #f9fafb; padding: 16px; border-radius: 12px; font-family: monospace; font-size: 12px; white-space: pre-wrap; word-break: break-word; max-height: 400px; overflow-y: auto; }
-        .junk-highlight { font-family: monospace; font-size: 12px; white-space: pre-wrap; word-break: break-word; }
+        
+        .action-buttons {
+            display: flex;
+            gap: 12px;
+            margin: 16px 0;
+            flex-wrap: wrap;
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+        .btn-secondary {
+            background: #f3f4f6;
+            color: #374151;
+            border: 1px solid #d1d5db;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+        .comparison-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin: 16px 0;
+            max-height: 500px;
+            overflow-y: auto;
+        }
+        .before, .after {
+            background: #f9fafb;
+            padding: 16px;
+            border-radius: 12px;
+            font-family: monospace;
+            font-size: 12px;
+            white-space: pre-wrap;
+            word-break: break-word;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .junk-highlight {
+            font-family: monospace;
+            font-size: 12px;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
         .junk-stream { background: #fee2e2; color: #991b1b; }
         .junk-random { background: #fed7aa; color: #9b2c1d; }
         .junk-metadata { background: #e9d5ff; color: #6b21a5; }
         .junk-duplicate { background: #fef3c7; color: #92400e; }
-        .stats { font-size: 11px; margin-top: 8px; }
+        .stats {
+            font-size: 11px;
+            margin-top: 8px;
+        }
         .bad { color: #ef4444; }
         .good { color: #10b981; }
+
+        /* Bloom Level Colors */
         .bloom-level-6 { background: #8b5cf6; color: white; }
         .bloom-level-5 { background: #3b82f6; color: white; }
         .bloom-level-4 { background: #10b981; color: white; }
         .bloom-level-3 { background: #f59e0b; color: white; }
         .bloom-level-2 { background: #f97316; color: white; }
         .bloom-level-1 { background: #ef4444; color: white; }
-        .jd-keywords-section { background: #f8fafc; border-radius: 12px; padding: 16px; margin: 15px 0; border: 1px solid #e2e8f0; }
-        .jd-keywords-title { font-size: 14px; font-weight: 600; color: #1a365d; margin-bottom: 10px; }
-        .jd-keyword-badge { display: inline-block; background: #e0e7ff; color: #3730a3; padding: 4px 10px; border-radius: 20px; font-size: 12px; margin: 4px 6px 4px 0; }
-        .token-savings-badge { display: inline-block; background: #d1fae5; color: #065f46; padding: 4px 12px; border-radius: 20px; font-size: 11px; font-weight: 600; margin-left: 8px; }
-        .credibility-container { background: #f8fafc; border-radius: 16px; padding: 24px; margin: 20px 0; border: 1px solid #e2e8f0; }
-        .credibility-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 10px; }
-        .credibility-title { font-size: 18px; font-weight: 600; color: #1a365d; }
-        .credibility-badge { padding: 6px 12px; border-radius: 20px; font-size: 14px; font-weight: 600; }
+
+        .credibility-container {
+            background: #f8fafc;
+            border-radius: 16px;
+            padding: 24px;
+            margin: 20px 0;
+            border: 1px solid #e2e8f0;
+        }
+        .credibility-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .credibility-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #1a365d;
+        }
+        .credibility-badge {
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 600;
+        }
         .credibility-badge.high { background: #d1fae5; color: #065f46; }
         .credibility-badge.moderate { background: #fed7aa; color: #9b2c1d; }
         .credibility-badge.low { background: #fee2e2; color: #991b1b; }
-        .credibility-bar { background: #e5e7eb; border-radius: 10px; height: 10px; overflow: hidden; margin: 15px 0; }
-        .credibility-fill { background: linear-gradient(90deg, #ef4444, #f59e0b, #10b981); height: 100%; border-radius: 10px; transition: width 0.5s ease; }
-        .semantic-container { background: #f8fafc; border-radius: 16px; padding: 24px; margin: 20px 0; border: 1px solid #e2e8f0; }
-        .semantic-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 10px; }
-        .semantic-title { font-size: 18px; font-weight: 600; color: #1a365d; }
-        .semantic-badge { padding: 6px 12px; border-radius: 20px; font-size: 14px; font-weight: 600; }
+        .credibility-bar {
+            background: #e5e7eb;
+            border-radius: 10px;
+            height: 10px;
+            overflow: hidden;
+            margin: 15px 0;
+        }
+        .credibility-fill {
+            background: linear-gradient(90deg, #ef4444, #f59e0b, #10b981);
+            height: 100%;
+            border-radius: 10px;
+            transition: width 0.5s ease;
+        }
+
+        .semantic-container {
+            background: #f8fafc;
+            border-radius: 16px;
+            padding: 24px;
+            margin: 20px 0;
+            border: 1px solid #e2e8f0;
+        }
+        .semantic-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .semantic-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #1a365d;
+        }
+        .semantic-badge {
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 600;
+        }
         .semantic-badge.green { background: #d1fae5; color: #065f46; }
         .semantic-badge.orange { background: #fed7aa; color: #9b2c1d; }
         .semantic-badge.red { background: #fee2e2; color: #991b1b; }
-        .position-scale { margin: 20px 0; position: relative; padding: 20px 0; }
-        .scale-line { height: 8px; background: linear-gradient(90deg, #ef4444 0%, #f59e0b 25%, #10b981 50%, #f59e0b 75%, #ef4444 100%); border-radius: 4px; position: relative; margin: 20px 0; }
-        .scale-marker { position: absolute; width: 20px; height: 20px; background: #1a365d; border: 3px solid white; border-radius: 50%; top: 50%; transform: translate(-50%, -50%); box-shadow: 0 2px 8px rgba(0,0,0,0.2); }
-        .scale-labels { display: flex; justify-content: space-between; margin-top: 10px; font-size: 12px; color: #6b7280; }
-        .alignment-bar { background: #e5e7eb; border-radius: 10px; height: 10px; overflow: hidden; margin: 15px 0; }
-        .alignment-fill { background: linear-gradient(90deg, #667eea, #764ba2); height: 100%; border-radius: 10px; transition: width 0.5s ease; }
-        .semantic-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px; margin: 20px 0; padding: 15px; background: white; border-radius: 12px; }
-        .semantic-stat { text-align: center; }
-        .semantic-stat-label { font-size: 12px; color: #6b7280; margin-bottom: 5px; }
-        .semantic-stat-value { font-size: 18px; font-weight: 700; color: #1a365d; }
-        .explainer { background: #f1f5f9; padding: 12px; border-radius: 12px; margin: 15px 0 0; font-size: 13px; color: #475569; cursor: pointer; }
-        .explainer-content { margin-top: 10px; padding-top: 10px; border-top: 1px solid #cbd5e1; font-size: 12px; display: none; }
-        .explainer-content.show { display: block; }
-        .results-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; margin-top: 30px; text-align: left; }
-        .results-section { background: #f9fafb; border-radius: 12px; padding: 20px; }
-        .results-section h3 { color: #1a365d; margin-bottom: 15px; border-bottom: 2px solid #667eea; padding-bottom: 8px; }
-        .disclaimer-box { background: #fffbeb; border-left: 4px solid #f59e0b; padding: 16px; margin-top: 16px; border-radius: 8px; font-size: 14px; }
+
+        .position-scale {
+            margin: 20px 0;
+            position: relative;
+            padding: 20px 0;
+        }
+        .scale-line {
+            height: 8px;
+            background: linear-gradient(90deg, #ef4444 0%, #f59e0b 25%, #10b981 50%, #f59e0b 75%, #ef4444 100%);
+            border-radius: 4px;
+            position: relative;
+            margin: 20px 0;
+        }
+        .scale-marker {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            background: #1a365d;
+            border: 3px solid white;
+            border-radius: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        }
+        .scale-labels {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 10px;
+            font-size: 12px;
+            color: #6b7280;
+        }
+        .alignment-bar {
+            background: #e5e7eb;
+            border-radius: 10px;
+            height: 10px;
+            overflow: hidden;
+            margin: 15px 0;
+        }
+        .alignment-fill {
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            height: 100%;
+            border-radius: 10px;
+            transition: width 0.5s ease;
+        }
+        .semantic-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+            padding: 15px;
+            background: white;
+            border-radius: 12px;
+        }
+        .semantic-stat {
+            text-align: center;
+        }
+        .semantic-stat-label {
+            font-size: 12px;
+            color: #6b7280;
+            margin-bottom: 5px;
+        }
+        .semantic-stat-value {
+            font-size: 18px;
+            font-weight: 700;
+            color: #1a365d;
+        }
+        .explainer {
+            background: #f1f5f9;
+            padding: 12px;
+            border-radius: 12px;
+            margin: 15px 0 0;
+            font-size: 13px;
+            color: #475569;
+            cursor: pointer;
+        }
+        .explainer-content {
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px solid #cbd5e1;
+            font-size: 12px;
+            display: none;
+        }
+        .explainer-content.show {
+            display: block;
+        }
+
+        .results-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-top: 30px;
+            text-align: left;
+        }
+        .results-section {
+            background: #f9fafb;
+            border-radius: 12px;
+            padding: 20px;
+        }
+        .results-section h3 {
+            color: #1a365d;
+            margin-bottom: 15px;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 8px;
+        }
+        .disclaimer-box {
+            background: #fffbeb;
+            border-left: 4px solid #f59e0b;
+            padding: 16px;
+            margin-top: 16px;
+            border-radius: 8px;
+            font-size: 14px;
+        }
         .disclaimer-box.critical { background: #fef2f2; border-left-color: #ef4444; }
         .disclaimer-box.warning { background: #fffbeb; border-left-color: #f59e0b; }
         .disclaimer-box.suggestion { background: #eff6ff; border-left-color: #3b82f6; }
-        .issues-table { width: 100%; border-collapse: collapse; }
-        .issues-table th, .issues-table td { padding: 12px; text-align: left; border-bottom: 1px solid #e5e7eb; vertical-align: top; }
-        .issues-table th { background: #f9fafb; font-weight: 600; color: #374151; }
+
+        .issues-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .issues-table th, .issues-table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #e5e7eb;
+            vertical-align: top;
+        }
+        .issues-table th {
+            background: #f9fafb;
+            font-weight: 600;
+            color: #374151;
+        }
         .priority-high { color: #ef4444; font-weight: 600; }
         .priority-medium { color: #f59e0b; }
         .priority-low { color: #6b7280; }
-        .strengths-list, .missing-keywords-list { list-style: none; padding: 0; }
-        .strengths-list li, .missing-keywords-list li { padding: 8px 0; border-bottom: 1px solid #e5e7eb; }
+
+        .strengths-list, .missing-keywords-list {
+            list-style: none;
+            padding: 0;
+        }
+        .strengths-list li, .missing-keywords-list li {
+            padding: 8px 0;
+            border-bottom: 1px solid #e5e7eb;
+        }
         .strengths-list li:before { content: "✅ "; color: #10b981; }
         .missing-keywords-list li:before { content: "🔍 "; color: #f59e0b; }
-        .flag-item { background: #fef2f2; padding: 12px; margin: 10px 0; border-radius: 8px; border-left: 4px solid #ef4444; }
-        .credibility-flag-item { background: #fffbeb; padding: 12px; margin: 10px 0; border-radius: 8px; border-left: 4px solid #f59e0b; }
-        .role-match-item { display: flex; justify-content: space-between; padding: 10px; border-bottom: 1px solid #e5e7eb; }
+
+        .flag-item {
+            background: #fef2f2;
+            padding: 12px;
+            margin: 10px 0;
+            border-radius: 8px;
+            border-left: 4px solid #ef4444;
+        }
+        .credibility-flag-item {
+            background: #fffbeb;
+            padding: 12px;
+            margin: 10px 0;
+            border-radius: 8px;
+            border-left: 4px solid #f59e0b;
+        }
+        .role-match-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px;
+            border-bottom: 1px solid #e5e7eb;
+        }
         .match-percentage { font-weight: bold; color: #667eea; }
         .match-strong { color: #10b981; font-weight: bold; }
-        .email-capture { background: linear-gradient(135deg, #667eea15 0%, #764ba215 100%); padding: 30px; border-radius: 12px; margin-top: 30px; text-align: center; }
-        .email-input { display: flex; gap: 10px; max-width: 500px; margin: 20px auto 0; }
-        .email-input input { flex: 1; padding: 12px 16px; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 16px; }
-        .email-input button { width: auto; padding: 12px 30px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; }
-        .back-link { text-align: center; margin-top: 30px; }
-        .back-link a { color: white; text-decoration: none; font-weight: 600; }
+
+        .email-capture {
+            background: linear-gradient(135deg, #667eea15 0%, #764ba215 100%);
+            padding: 30px;
+            border-radius: 12px;
+            margin-top: 30px;
+            text-align: center;
+        }
+        .email-input {
+            display: flex;
+            gap: 10px;
+            max-width: 500px;
+            margin: 20px auto 0;
+        }
+        .email-input input {
+            flex: 1;
+            padding: 12px 16px;
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            font-size: 16px;
+        }
+        .email-input button {
+            width: auto;
+            padding: 12px 30px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+
+        .back-link {
+            text-align: center;
+            margin-top: 30px;
+        }
+        .back-link a {
+            color: white;
+            text-decoration: none;
+            font-weight: 600;
+        }
         .back-link a:hover { text-decoration: underline; }
-        .privacy-note { font-size: 12px; color: #6b7280; text-align: center; margin-top: 20px; }
-        .fallback-note { background: #fef3c7; border: 1px solid #f59e0b; border-radius: 8px; padding: 10px; margin-bottom: 20px; font-size: 12px; text-align: center; color: #92400e; }
-        .v8-section { margin-top: 20px; }
-        .bloom-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 15px; margin-bottom: 15px; }
-        .bloom-stat { text-align: center; padding: 10px; background: white; border-radius: 8px; }
-        .bloom-stat-label { font-size: 11px; color: #6b7280; }
-        .bloom-stat-value { font-size: 20px; font-weight: 700; color: #1a365d; }
-        .bullets-by-level { margin-top: 15px; }
-        .bullets-by-level strong { display: block; margin-bottom: 8px; }
-        .level-badge { display: inline-block; padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; margin-right: 10px; }
-        .grammar-item, .missing-tool-item, .rewrite-item, .weak-metric-item { background: white; padding: 12px; margin: 10px 0; border-radius: 8px; border-left: 4px solid #667eea; }
-        .error-type { font-size: 11px; font-weight: 600; text-transform: uppercase; margin-bottom: 5px; }
-        .industry-badge { display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; background: #e0f2fe; color: #0369a1; margin-left: 10px; }
-        .extraction-badge { display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 10px; font-weight: 600; margin-left: 8px; background: #e0e7ff; color: #3730a3; }
+
+        .privacy-note {
+            font-size: 12px;
+            color: #6b7280;
+            text-align: center;
+            margin-top: 20px;
+        }
+
+        .fallback-note {
+            background: #fef3c7;
+            border: 1px solid #f59e0b;
+            border-radius: 8px;
+            padding: 10px;
+            margin-bottom: 20px;
+            font-size: 12px;
+            text-align: center;
+            color: #92400e;
+        }
+
+        .v8-section {
+            margin-top: 20px;
+        }
+        .bloom-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+        .bloom-stat {
+            text-align: center;
+            padding: 10px;
+            background: white;
+            border-radius: 8px;
+        }
+        .bloom-stat-label {
+            font-size: 11px;
+            color: #6b7280;
+        }
+        .bloom-stat-value {
+            font-size: 20px;
+            font-weight: 700;
+            color: #1a365d;
+        }
+        .bullets-by-level {
+            margin-top: 15px;
+        }
+        .bullets-by-level strong {
+            display: block;
+            margin-bottom: 8px;
+        }
+        .level-badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 600;
+            margin-right: 10px;
+        }
+        .grammar-item, .missing-tool-item, .rewrite-item, .weak-metric-item {
+            background: white;
+            padding: 12px;
+            margin: 10px 0;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+        }
+        .error-type {
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            margin-bottom: 5px;
+        }
+        .industry-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            background: #e0f2fe;
+            color: #0369a1;
+            margin-left: 10px;
+        }
+        .extraction-badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 10px;
+            font-weight: 600;
+            margin-left: 8px;
+            background: #e0e7ff;
+            color: #3730a3;
+        }
+
         @media (max-width: 768px) {
             .dual-input-grid { grid-template-columns: 1fr; }
             .results-grid { grid-template-columns: 1fr; }
@@ -233,7 +908,6 @@
         const STANDARD_WORKER_URL = "https://ats-resume-only.keron62.workers.dev";
         const COMPARE_WORKER_URL = "https://ats-proxy.keron62.workers.dev";
         const AGGREGATOR_URL = "https://ats-aggregator.keron62.workers.dev";
-        const FOUNDRY_URL = "https://ats-foundary.keron62.workers.dev/extract";
         
         // Extraction Pipeline URLs
         const PDFJS_EXTRACT_URL = "https://ats-pdfjs-extract.keron62.workers.dev";
@@ -242,9 +916,6 @@
         
         // Stage 2 Parser
         const STAGE_2_PARSER_URL = "https://ats-stage-2-parser.keron62.workers.dev";
-
-        // Cache key for JD keywords
-        const JD_CACHE_KEY = "jd_keywords_cache";
 
         // ============================================================
         // RESUME BUILDER DATABASE
@@ -285,7 +956,7 @@
         }
 
         // ============================================================
-        // PDF QUALITY ANALYSIS FUNCTION (FIXED THRESHOLDS)
+        // PDF QUALITY ANALYSIS FUNCTION
         // ============================================================
         
         function analyzePDFQuality(text, metadata = {}) {
@@ -293,41 +964,16 @@
             let score = 100;
             let junkPatterns = [];
             
-            const numbers = (text.match(/\d/g) || []).length;
-            const letters = (text.match(/[A-Za-z]/g) || []).length;
-            const ratio = letters / (numbers + 1);
-            
-            // If text is very clean, return perfect score immediately
-            if (ratio > 0.7 && !text.includes('xmp:') && !text.includes('rdf:') && text.length > 500) {
-                return {
-                    score: 100,
-                    is_clean: true,
-                    needs_fallback: false,
-                    issues: [],
-                    junk_patterns: [],
-                    detected_builder: RESUME_BUILDERS['unknown'],
-                    stats: {
-                        total_chars: text.length,
-                        numbers_count: numbers,
-                        letters_count: letters,
-                        junk_estimate_percent: 0,
-                        junk_chars: 0,
-                        clean_chars: letters
-                    },
-                    recommendation: { action: 'none', message: 'PDF quality is excellent. No action needed.' }
-                };
-            }
-            
             const streamPattern = /\b\d+\s+\d+\s+\d+\s+\d+\s+\d+\s+\d+\s+d1\b/g;
             const streamMatches = text.match(streamPattern) || [];
-            if (streamMatches.length > 5) {
+            if (streamMatches.length > 0) {
                 issues.push({
                     type: 'PDF Stream Obfuscation',
                     severity: 'high',
                     message: `Detected ${streamMatches.length} PDF stream operators - common in "Print to PDF" output`,
                     fix: 'Use "Save as PDF" instead of "Print to PDF"'
                 });
-                score -= Math.min(25, streamMatches.length * 3);
+                score -= Math.min(30, streamMatches.length * 5);
                 junkPatterns.push('stream_operators');
             }
             
@@ -338,38 +984,41 @@
                     message: 'Embedded XMP/RDF metadata detected - adds noise to ATS parsing',
                     fix: 'Export from Microsoft Word directly, not from browser'
                 });
-                score -= 10;
+                score -= 15;
                 junkPatterns.push('metadata');
             }
             
             const randomStringPattern = /\b[A-Z0-9]{4,6}\b/g;
             const randomMatches = text.match(randomStringPattern) || [];
             const suspiciousRandom = randomMatches.filter(s => !isRealWord(s));
-            if (suspiciousRandom.length > 20) {
+            if (suspiciousRandom.length > 10) {
                 issues.push({
                     type: 'Obfuscated Content',
                     severity: 'medium',
                     message: `${suspiciousRandom.length} suspicious short strings detected - PDF may be corrupted`,
                     fix: 'Re-save PDF from original document using "Save As" not "Print"'
                 });
-                score -= 15;
+                score -= 20;
                 junkPatterns.push('random_strings');
             }
             
-            if (ratio < 0.4 && numbers > 300) {
+            const numbers = (text.match(/\d/g) || []).length;
+            const letters = (text.match(/[A-Za-z]/g) || []).length;
+            const ratio = letters / (numbers + 1);
+            if (ratio < 0.5 && numbers > 200) {
                 issues.push({
                     type: 'High Noise Ratio',
                     severity: 'high',
                     message: `High number-to-text ratio (${numbers} numbers vs ${letters} letters) - PDF likely generated incorrectly`,
                     fix: 'Use Microsoft Word → Save as PDF (not Print to PDF)'
                 });
-                score -= 20;
+                score -= 25;
                 junkPatterns.push('high_noise');
             }
             
             const duplicatePattern = /\b(\w+)\s+\1\s+\1\b/g;
             const duplicates = text.match(duplicatePattern) || [];
-            if (duplicates.length > 10) {
+            if (duplicates.length > 0) {
                 issues.push({
                     type: 'Word Duplication',
                     severity: 'low',
@@ -382,7 +1031,7 @@
             
             const lines = text.split('\n');
             const longLines = lines.filter(l => l.length > 200 && !l.includes('•'));
-            if (longLines.length > 5) {
+            if (longLines.length > 3) {
                 issues.push({
                     type: 'Missing Line Breaks',
                     severity: 'medium',
@@ -394,7 +1043,7 @@
             }
             
             const corruptedEntities = (text.match(/&amp;|&#39;|&quot;|&lt;|&gt;/g) || []).length;
-            if (corruptedEntities > 10) {
+            if (corruptedEntities > 5) {
                 issues.push({
                     type: 'Corrupted Entities',
                     severity: 'low',
@@ -412,7 +1061,7 @@
             return {
                 score: score,
                 is_clean: score >= 70,
-                needs_fallback: score < 60,
+                needs_fallback: score < 70,
                 issues: issues,
                 junk_patterns: junkPatterns,
                 detected_builder: detectedBuilder,
@@ -489,78 +1138,11 @@
             return highlighted;
         }
 
-        // ============================================================
-        // FOUNDRY KEYWORD EXTRACTION
-        // ============================================================
-        
-        async function extractKeywordsWithFoundry(text) {
-            try {
-                const response = await fetch(FOUNDRY_URL, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ text: text })
-                });
-                
-                const data = await response.json();
-                
-                if (data.success) {
-                    const cleanSkills = (data.skills || []).filter(s => 
-                        s.length > 2 && isNaN(parseFloat(s)) && !s.match(/^\d+$/) && !s.match(/^\$\d+[KMB]?$/)
-                    );
-                    return {
-                        success: true,
-                        skills: cleanSkills,
-                        roles: data.roles || [],
-                        organizations: data.organizations || [],
-                        total_entities: data.total_entities || 0
-                    };
-                }
-                return null;
-            } catch (error) {
-                console.warn("Foundry extraction failed:", error);
-                return null;
-            }
-        }
-
-        // ============================================================
-        // GET CACHED JD KEYWORDS
-        // ============================================================
-        
-        function getCachedJDKeywords(jdText) {
-            try {
-                const cache = localStorage.getItem(JD_CACHE_KEY);
-                if (cache) {
-                    const parsed = JSON.parse(cache);
-                    const hash = jdText.substring(0, 200) + jdText.length;
-                    if (parsed.hash === hash && parsed.timestamp > Date.now() - 86400000) {
-                        return parsed.keywords;
-                    }
-                }
-            } catch (e) {
-                console.warn("Cache read failed:", e);
-            }
-            return null;
-        }
-        
-        function setCachedJDKeywords(jdText, keywords) {
-            try {
-                const hash = jdText.substring(0, 200) + jdText.length;
-                localStorage.setItem(JD_CACHE_KEY, JSON.stringify({
-                    hash: hash,
-                    keywords: keywords,
-                    timestamp: Date.now()
-                }));
-            } catch (e) {
-                console.warn("Cache write failed:", e);
-            }
-        }
-
         function ATSScanner() {
             const [isComparisonMode, setIsComparisonMode] = useState(false);
             
             // Resume state
             const [resumeText, setResumeText] = useState('');
-            const [rawResumeText, setRawResumeText] = useState('');
             const [resumeFileName, setResumeFileName] = useState('');
             const [resumeParseError, setResumeParseError] = useState(null);
             const [resumePdfHealth, setResumePdfHealth] = useState(null);
@@ -574,13 +1156,6 @@
             const [jobDescriptionText, setJobDescriptionText] = useState('');
             const [jobDescriptionFileName, setJobDescriptionFileName] = useState('');
             const [jobDescriptionParseError, setJobDescriptionParseError] = useState(null);
-            
-            // Foundry extracted keywords
-            const [jdSkills, setJdSkills] = useState([]);
-            const [jdRoles, setJdRoles] = useState([]);
-            const [jdOrgs, setJdOrgs] = useState([]);
-            const [isExtractingKeywords, setIsExtractingKeywords] = useState(false);
-            const [tokenSavings, setTokenSavings] = useState(0);
             
             const [loading, setLoading] = useState(false);
             const [result, setResult] = useState(null);
@@ -621,11 +1196,11 @@
             }
             
             function getApplyRecommendation(score) {
-                if (score >= 20) return { text: "🚀 APPLY IMMEDIATELY", context: "Your profile is highly competitive. Top 1% of candidates. Your resume is perfectly positioned for this role." };
-                if (score >= 13) return { text: "✅ STRONG YES", context: "You have a solid chance. Top 10% of candidates. Your resume aligns well with the role requirements." };
-                if (score >= 8) return { text: "👍 YES", context: "Your profile is decent. Apply if interested. Some minor improvements could increase your chances." };
-                if (score >= 3) return { text: "⚠️ 50/50", context: "This role is a long shot. Apply only if you have time. Consider strengthening your resume first." };
-                return { text: "🔴 CONSIDER OTHER ROLES", context: "Target roles at a different level or strengthen your resume significantly before applying." };
+                if (score >= 20) return { text: "🚀 APPLY IMMEDIATELY", context: "Your profile is highly competitive. Top 1% of candidates." };
+                if (score >= 13) return { text: "✅ STRONG YES", context: "You have a solid chance. Top 10% of candidates." };
+                if (score >= 8) return { text: "👍 YES", context: "Your profile is decent. Apply if interested." };
+                if (score >= 3) return { text: "⚠️ 50/50", context: "This role is a long shot. Apply only if you have time." };
+                return { text: "🔴 CONSIDER OTHER ROLES", context: "Target roles at a different level or strengthen your resume first." };
             }
 
             // ============================================================
@@ -871,13 +1446,11 @@
                     let extractionInfo = null;
                     let azureHealthData = null;
                     let pdfQualityData = null;
-                    let rawText = null;
                     
                     if (file.name.endsWith('.docx') || file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
                         setAnalysisStage('Extracting from Microsoft Word...');
                         const result = await extractWithDocx(file);
                         extractedText = result.text;
-                        rawText = result.text;
                         extractionInfo = { method: 'docx', confidence: result.confidence, pageCount: result.pages };
                         setExtractionMethod('📄 Microsoft Word');
                     }
@@ -889,7 +1462,6 @@
                             reader.onerror = () => reject(new Error('Failed to read text file'));
                             reader.readAsText(file);
                         });
-                        rawText = extractedText;
                         extractionInfo = { method: 'plain-text', confidence: 100, pageCount: 1 };
                         setExtractionMethod('📄 Plain Text');
                     }
@@ -897,7 +1469,6 @@
                         setAnalysisStage('Extracting PDF with quality check...');
                         const result = await extractWithQualityCheck(file);
                         extractedText = result.text;
-                        rawText = result.raw_text || result.text;
                         extractionInfo = { 
                             method: result.method, 
                             confidence: result.confidence, 
@@ -944,8 +1515,6 @@
                         return;
                     }
                     
-                    setRawResumeText(rawText || extractedText);
-                    
                     const healthData = analyzeExtractedHealth(
                         extractedText, 
                         extractionInfo.pageCount, 
@@ -988,7 +1557,7 @@
             };
 
             // ============================================================
-            // JD UPLOAD HANDLER (WITH FOUNDRY KEYWORD EXTRACTION)
+            // JD UPLOAD HANDLER
             // ============================================================
             
             const handleJobDescriptionFileUpload = async (e) => {
@@ -1040,53 +1609,18 @@
                     }
                     
                     setJobDescriptionText(extractedText);
-                    
-                    setAnalysisStage('Extracting keywords with Azure Foundry...');
-                    setIsExtractingKeywords(true);
-                    
-                    let keywords = getCachedJDKeywords(extractedText);
-                    
-                    if (!keywords) {
-                        keywords = await extractKeywordsWithFoundry(extractedText);
-                        if (keywords && keywords.success) {
-                            setCachedJDKeywords(extractedText, keywords);
-                        }
-                    }
-                    
-                    if (keywords && keywords.success) {
-                        setJdSkills(keywords.skills || []);
-                        setJdRoles(keywords.roles || []);
-                        setJdOrgs(keywords.organizations || []);
-                        
-                        const estimatedTokens = Math.ceil(extractedText.length / 4);
-                        const keywordTokens = (keywords.skills.length + keywords.roles.length + keywords.organizations.length) * 6;
-                        const savings = Math.max(0, estimatedTokens - keywordTokens);
-                        setTokenSavings(savings);
-                        
-                        console.log(`✅ Foundry extracted: ${keywords.skills.length} skills, ${keywords.roles.length} roles`);
-                    } else {
-                        console.warn('⚠️ Foundry extraction failed, will use full JD for analysis');
-                        setJdSkills([]);
-                        setJdRoles([]);
-                        setJdOrgs([]);
-                        setTokenSavings(0);
-                    }
-                    
-                    setIsExtractingKeywords(false);
                     setAnalysisStage('');
                     setLoading(false);
                     
                 } catch (error) {
-                    console.error('JD upload error:', error);
                     setJobDescriptionParseError(error.message);
-                    setIsExtractingKeywords(false);
                     setLoading(false);
                     setAnalysisStage('');
                 }
             };
 
             // ============================================================
-            // ANALYZE RESUME (WITH FOUNDRY KEYWORDS FOR COMPARISON MODE)
+            // ANALYZE RESUME
             // ============================================================
             
             const analyzeResume = async () => {
@@ -1164,22 +1698,13 @@
                         setResult(aggregatorData);
                         
                     } else {
-                        setAnalysisStage('Analyzing with AI (using extracted keywords)...');
-                        
                         const workerUrl = COMPARE_WORKER_URL;
-                        
-                        const hasKeywords = jdSkills.length > 0 || jdRoles.length > 0;
                         
                         const payload = {
                             resume: structuredResume,
                             resumeText: resumeText,
                             resumePdfHealth: resumePdfHealth,
-                            jobDescriptionText: hasKeywords ? null : jobDescriptionText,
-                            jd_keywords: hasKeywords ? {
-                                skills: jdSkills,
-                                roles: jdRoles,
-                                organizations: jdOrgs
-                            } : null
+                            jobDescriptionText: jobDescriptionText
                         };
                         
                         const response = await fetch(workerUrl, {
@@ -1209,8 +1734,6 @@
                             parsedResult.structured_used = !!structuredResume;
                             parsedResult.azure_health = azureHealth;
                             parsedResult.pdf_quality = pdfQuality;
-                            parsedResult.foundry_keywords_used = hasKeywords;
-                            parsedResult.token_savings = tokenSavings;
                             
                             setResult(parsedResult);
                         } else {
@@ -1408,7 +1931,7 @@
             };
 
             // ============================================================
-            // PDF QUALITY WARNING COMPONENT (FIXED ATS EYE VIEW)
+            // PDF QUALITY WARNING COMPONENT (NEW V8.4)
             // ============================================================
             
             const renderPDFQualityWarning = () => {
@@ -1461,22 +1984,19 @@
                         <div className="action-buttons">
                             <button 
                                 className="btn-primary"
-                                onClick={(e) => {
-                                    e.preventDefault();
-                                    setShowAtsEyeView(prev => !prev);
-                                }}
+                                onClick={() => setShowAtsEyeView(!showAtsEyeView)}
                             >
                                 {showAtsEyeView ? 'Hide' : 'Show'} ATS Eye View
                             </button>
                         </div>
                         
-                        {showAtsEyeView && rawResumeText && (
+                        {showAtsEyeView && resumeText && (
                             <div className="comparison-grid">
                                 <div className="before">
                                     <strong>🔴 What the ATS Actually Sees:</strong>
                                     <div className="junk-highlight" 
                                          dangerouslySetInnerHTML={{ 
-                                             __html: highlightJunk(rawResumeText.substring(0, 2000), pdfQuality.junk_patterns) 
+                                             __html: highlightJunk(resumeText.substring(0, 2000), pdfQuality.junk_patterns) 
                                          }} />
                                     <div className="stats">
                                         <span className="bad">🗑️ Junk: {pdfQuality.stats.junk_chars} chars</span>
@@ -1546,235 +2066,10 @@
                 );
             };
 
-            // Render JD Keywords Section
-            const renderJDKeywordsSection = () => {
-                if (!isComparisonMode || (jdSkills.length === 0 && jdRoles.length === 0)) return null;
-                
-                return (
-                    <div className="jd-keywords-section">
-                        <div className="jd-keywords-title">
-                            📋 JD Keywords Extracted
-                            {tokenSavings > 0 && (
-                                <span className="token-savings-badge">💾 Saved ~{tokenSavings} tokens</span>
-                            )}
-                        </div>
-                        {jdSkills.length > 0 && (
-                            <div>
-                                <span style={{ fontSize: '12px', color: '#6b7280' }}>Skills:</span>
-                                {jdSkills.map((skill, i) => (
-                                    <span key={i} className="jd-keyword-badge">{skill}</span>
-                                ))}
-                            </div>
-                        )}
-                        {jdRoles.length > 0 && (
-                            <div style={{ marginTop: '8px' }}>
-                                <span style={{ fontSize: '12px', color: '#6b7280' }}>Roles:</span>
-                                {jdRoles.map((role, i) => (
-                                    <span key={i} className="jd-keyword-badge">{role}</span>
-                                ))}
-                            </div>
-                        )}
-                        {jdOrgs.length > 0 && (
-                            <div style={{ marginTop: '8px' }}>
-                                <span style={{ fontSize: '12px', color: '#6b7280' }}>Organizations:</span>
-                                {jdOrgs.map((org, i) => (
-                                    <span key={i} className="jd-keyword-badge">{org}</span>
-                                ))}
-                            </div>
-                        )}
-                        <div style={{ fontSize: '11px', color: '#6b7280', marginTop: '8px' }}>
-                            🤖 Extracted via Azure Foundry Language Service
-                        </div>
-                    </div>
-                );
-            };
-
-            // Safe render helpers for crash prevention
-            const safeBloomRender = (item, idx) => {
-                let levelClass = '';
-                if (item.level === 6) levelClass = 'bloom-level-6';
-                else if (item.level === 5) levelClass = 'bloom-level-5';
-                else if (item.level === 4) levelClass = 'bloom-level-4';
-                else if (item.level === 3) levelClass = 'bloom-level-3';
-                else if (item.level === 2) levelClass = 'bloom-level-2';
-                else if (item.level === 1) levelClass = 'bloom-level-1';
-                
-                const exampleText = (item.example || "").substring(0, 80);
-                
-                return (
-                    <div key={idx} style={{ marginTop: '8px', fontSize: '13px' }}>
-                        <span className={`level-badge ${levelClass}`}>Level {item.level}</span>
-                        <span> {item.count} bullet{item.count !== 1 ? 's' : ''}</span>
-                        {exampleText && <span style={{ color: '#6b7280', marginLeft: '10px' }}>— "{exampleText}..."</span>}
-                    </div>
-                );
-            };
-
-            const safeGrammarRender = (issue, idx) => {
-                const originalText = (issue.original_text || issue.text || "").replace(/"/g, '');
-                const errorType = issue.error_type || 'grammar';
-                const issueText = issue.issue || 'Grammar issue detected';
-                const suggestion = issue.suggestion || 'Review and correct';
-                return (
-                    <div key={idx} className="grammar-item">
-                        <div className="error-type" style={{ color: errorType === 'spelling' ? '#ef4444' : errorType === 'grammar' ? '#f59e0b' : '#3b82f6' }}>
-                            {errorType.toUpperCase()}
-                        </div>
-                        <div className="original">"{originalText}"</div>
-                        <div style={{ fontSize: '12px', marginTop: '5px' }}>❌ {issueText}</div>
-                        <div className="suggestion">✅ {suggestion}</div>
-                    </div>
-                );
-            };
-
-            const safeToolRender = (tool, idx) => {
-                const toolName = tool.tool_name || tool.name || "Unknown tool";
-                const category = tool.category || "";
-                return (
-                    <div key={idx} className="missing-tool-item">
-                        <strong>{toolName}</strong> {category && <span style={{ color: '#6b7280' }}>({category})</span>}
-                        <div className="flag-suggestion">💡 {tool.suggestion || 'Add to Skills section if experienced'}</div>
-                    </div>
-                );
-            };
-
-            const safeWeakMetricRender = (metric, idx) => {
-                const bulletText = metric.bullet_text || metric.text || "";
-                return (
-                    <div key={idx} className="weak-metric-item" style={{ borderLeftColor: '#ef4444' }}>
-                        <div className="original">"{bulletText}"</div>
-                        <div style={{ fontSize: '12px', marginTop: '5px' }}>❌ {metric.reason || 'Weak metric detected'}</div>
-                        <div className="suggestion">✅ {metric.fix || 'Add baseline or context'}</div>
-                    </div>
-                );
-            };
-
-            const safeRewriteRender = (rewrite, idx) => {
-                const original = rewrite.original || rewrite.text || "";
-                return (
-                    <div key={idx} className="rewrite-item">
-                        <div><strong>Original:</strong> "{original}"</div>
-                        <div style={{ marginTop: '8px' }}>❌ {rewrite.issue || 'Needs improvement'}</div>
-                        <div style={{ marginTop: '8px', color: '#10b981' }}><strong>Suggested:</strong> "{rewrite.suggested_rewrite || rewrite.suggestion || 'Review and improve'}"</div>
-                        <div style={{ marginTop: '5px', fontSize: '12px', color: '#6b7280' }}>💡 {rewrite.reason || 'Improves clarity and impact'}</div>
-                    </div>
-                );
-            };
-
-            // Safe array render helpers with optional chaining
-            const safeStrengthsRender = () => {
-                if (Array.isArray(result?.strengths) && result.strengths.length > 0) {
-                    return (
-                        <ul className="strengths-list">
-                            {result.strengths.map((strength, idx) => (
-                                <li key={idx}>{strength}</li>
-                            ))}
-                        </ul>
-                    );
-                }
-                return <p>No strengths identified</p>;
-            };
-
-            const safeMissingKeywordsRender = () => {
-                if (Array.isArray(result?.missing_keywords) && result.missing_keywords.length > 0) {
-                    return (
-                        <>
-                            <h3 style={{ marginTop: '20px' }}>🔍 Missing Keywords</h3>
-                            <ul className="missing-keywords-list">
-                                {result.missing_keywords.map((keyword, idx) => (
-                                    <li key={idx}>{keyword}</li>
-                                ))}
-                            </ul>
-                        </>
-                    );
-                }
-                return null;
-            };
-
-            const safeRoleMatchRender = () => {
-                if (Array.isArray(result?.role_match) && result.role_match.length > 0) {
-                    return (
-                        <>
-                            {result.role_match.map((role, idx) => (
-                                <div key={idx} className="role-match-item">
-                                    <span>{role.role || role.title || "Unknown Role"}</span>
-                                    <span className={role.match_percentage >= 80 ? "match-strong" : "match-percentage"}>
-                                        {role.match_percentage || role.score || 0}%
-                                    </span>
-                                </div>
-                            ))}
-                            {(() => {
-                                const disclaimer = getRoleMatchDisclaimer(
-                                    result.role_match, 
-                                    result.total_ats_score, 
-                                    result.semantic_analysis?.position_score || 0
-                                );
-                                if (disclaimer) {
-                                    return (
-                                        <div className={`disclaimer-box ${disclaimer.type}`}>
-                                            <strong>{disclaimer.title}</strong><br/><br/>
-                                            <p>{disclaimer.message}</p>
-                                            <ul style={{ marginTop: '10px', marginLeft: '20px' }}>
-                                                {disclaimer.actions.map((action, i) => (<li key={i}>{action}</li>))}
-                                            </ul>
-                                            <p style={{ marginTop: '10px', fontWeight: 'bold' }}>→ {disclaimer.callToAction}</p>
-                                        </div>
-                                    );
-                                }
-                                return null;
-                            })()}
-                        </>
-                    );
-                }
-                return <p>No role matches identified</p>;
-            };
-
-            const safeImmediateFixesRender = () => {
-                if (Array.isArray(result?.immediate_fixes) && result.immediate_fixes.length > 0) {
-                    return (
-                        <>
-                            <h3 style={{ marginTop: '20px' }}>🔧 Immediate Fixes</h3>
-                            <ul>
-                                {result.immediate_fixes.map((fix, idx) => (
-                                    <li key={idx} style={{ marginBottom: '10px' }}>{fix}</li>
-                                ))}
-                            </ul>
-                        </>
-                    );
-                }
-                return null;
-            };
-
-            const safeAllIssuesRender = () => {
-                if (Array.isArray(result?.all_issues) && result.all_issues.length > 0) {
-                    return (
-                        <div className="results-section" style={{ marginTop: '20px' }}>
-                            <h3>📋 All Identified Issues ({result.all_issues.length})</h3>
-                            <table className="issues-table">
-                                <thead>
-                                    <tr><th>Priority</th><th>Issue</th><th>Location</th><th>How to Fix</th></tr>
-                                </thead>
-                                <tbody>
-                                    {result.all_issues.map((issue, idx) => (
-                                        <tr key={idx}>
-                                            <td className={`priority-${(issue.priority || 'medium').toLowerCase()}`}>{issue.priority || 'Medium'}</td>
-                                            <td><strong>{issue.issue || 'Issue detected'}</strong></td>
-                                            <td><small style={{ color: '#6b7280' }}>{issue.location || 'General'}</small></td>
-                                            <td>{issue.fix || issue.suggestion || 'Review and improve'}</td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
-                    );
-                }
-                return null;
-            };
-
             return (
                 <div className="container">
                     <div className="header">
-                        <h1>🎯 ATS Resume Scanner V8.5</h1>
+                        <h1>🎯 ATS Resume Scanner V8.4</h1>
                         <p>AI-powered analysis of formatting, keywords, and recruiter psychology</p>
                     </div>
 
@@ -1883,10 +2178,6 @@
                                                     <div>Upload Job Description (.txt, .pdf, .docx)</div>
                                                 </label>
                                                 {jobDescriptionFileName && <div className="file-name">📄 {jobDescriptionFileName}</div>}
-                                                {isExtractingKeywords && <div className="file-name" style={{ color: '#f59e0b' }}>🔍 Extracting keywords...</div>}
-                                                {!isExtractingKeywords && jdSkills.length > 0 && (
-                                                    <div className="file-name" style={{ color: '#10b981' }}>✅ {jdSkills.length} skills extracted</div>
-                                                )}
                                             </div>
                                             {jobDescriptionParseError && <div className="parse-error">⚠️ {jobDescriptionParseError}</div>}
                                             {jobDescriptionText && !jobDescriptionParseError && (
@@ -1923,7 +2214,6 @@
 
                                 {renderAzureHealthSection()}
                                 {renderPDFQualityWarning()}
-                                {renderJDKeywordsSection()}
 
                                 <div className="score-grid">
                                     <div className="score-card">
@@ -2039,7 +2329,7 @@
                                             </div>
                                         </div>
 
-                                        {Array.isArray(result.credibility_analysis?.career_plausibility_flags) && result.credibility_analysis.career_plausibility_flags.length > 0 && (
+                                        {result.credibility_analysis?.career_plausibility_flags?.length > 0 && (
                                             <div style={{ marginTop: '20px' }}>
                                                 <h4 style={{ marginBottom: '10px', color: '#1a365d' }}>📈 Career Trajectory Flags</h4>
                                                 {result.credibility_analysis.career_plausibility_flags.map((flag, idx) => (
@@ -2052,7 +2342,7 @@
                                             </div>
                                         )}
 
-                                        {Array.isArray(result.credibility_analysis?.education_title_flags) && result.credibility_analysis.education_title_flags.length > 0 && (
+                                        {result.credibility_analysis?.education_title_flags?.length > 0 && (
                                             <div style={{ marginTop: '20px' }}>
                                                 <h4 style={{ marginBottom: '10px', color: '#1a365d' }}>🎓 Education-Title Flags</h4>
                                                 {result.credibility_analysis.education_title_flags.map((flag, idx) => (
@@ -2065,7 +2355,7 @@
                                             </div>
                                         )}
 
-                                        {Array.isArray(result.credibility_analysis?.metric_plausibility_flags) && result.credibility_analysis.metric_plausibility_flags.length > 0 && (
+                                        {result.credibility_analysis?.metric_plausibility_flags?.length > 0 && (
                                             <div style={{ marginTop: '20px' }}>
                                                 <h4 style={{ marginBottom: '10px', color: '#1a365d' }}>📊 Metric Plausibility Flags</h4>
                                                 {result.credibility_analysis.metric_plausibility_flags.map((flag, idx) => (
@@ -2078,7 +2368,7 @@
                                             </div>
                                         )}
 
-                                        {Array.isArray(result.credibility_analysis?.acting_title_flags) && result.credibility_analysis.acting_title_flags.length > 0 && (
+                                        {result.credibility_analysis?.acting_title_flags?.length > 0 && (
                                             <div style={{ marginTop: '20px' }}>
                                                 <h4 style={{ marginBottom: '10px', color: '#1a365d' }}>🎭 "Acting" / Interim Title Flags</h4>
                                                 {result.credibility_analysis.acting_title_flags.map((flag, idx) => (
@@ -2091,7 +2381,7 @@
                                             </div>
                                         )}
 
-                                        {Array.isArray(result.credibility_analysis?.promotion_signals) && result.credibility_analysis.promotion_signals.length > 0 && (
+                                        {result.credibility_analysis?.promotion_signals?.length > 0 && (
                                             <div style={{ marginTop: '20px' }}>
                                                 <h4 style={{ marginBottom: '10px', color: '#1a365d' }}>📈 Promotion Signals</h4>
                                                 {result.credibility_analysis.promotion_signals.map((signal, idx) => (
@@ -2197,7 +2487,7 @@
                                             </div>
                                         </div>
 
-                                        {Array.isArray(result.semantic_analysis?.flags) && result.semantic_analysis.flags.length > 0 && (
+                                        {result.semantic_analysis.flags?.length > 0 && (
                                             <div style={{ marginTop: '20px' }}>
                                                 <h4 style={{ marginBottom: '10px', color: '#1a365d' }}>Semantic Flags</h4>
                                                 {result.semantic_analysis.flags.map((flag, idx) => (
@@ -2212,7 +2502,7 @@
                                             </div>
                                         )}
 
-                                        {Array.isArray(result.semantic_analysis?.recommendations) && result.semantic_analysis.recommendations.length > 0 && (
+                                        {result.semantic_analysis.recommendations?.length > 0 && (
                                             <div style={{ marginTop: '20px' }}>
                                                 <h4 style={{ marginBottom: '10px', color: '#1a365d' }}>Semantic Recommendations</h4>
                                                 <ul style={{ paddingLeft: '20px' }}>
@@ -2250,14 +2540,30 @@
                                                 </div>
                                             </div>
                                             
-                                            {Array.isArray(result.bloom_analysis.bullets_by_level) && result.bloom_analysis.bullets_by_level.length > 0 && (
+                                            {result.bloom_analysis.bullets_by_level && result.bloom_analysis.bullets_by_level.length > 0 && (
                                                 <div className="bullets-by-level">
                                                     <strong>Bullets by Cognitive Level:</strong>
-                                                    {result.bloom_analysis.bullets_by_level.map((item, idx) => safeBloomRender(item, idx))}
+                                                    {result.bloom_analysis.bullets_by_level.map((item, idx) => {
+                                                        let levelClass = '';
+                                                        if (item.level === 6) levelClass = 'bloom-level-6';
+                                                        else if (item.level === 5) levelClass = 'bloom-level-5';
+                                                        else if (item.level === 4) levelClass = 'bloom-level-4';
+                                                        else if (item.level === 3) levelClass = 'bloom-level-3';
+                                                        else if (item.level === 2) levelClass = 'bloom-level-2';
+                                                        else if (item.level === 1) levelClass = 'bloom-level-1';
+                                                        
+                                                        return (
+                                                            <div key={idx} style={{ marginTop: '8px', fontSize: '13px' }}>
+                                                                <span className={`level-badge ${levelClass}`}>Level {item.level}</span>
+                                                                <span> {item.count} bullet{item.count !== 1 ? 's' : ''}</span>
+                                                                {item.example && <span style={{ color: '#6b7280', marginLeft: '10px' }}>— "{item.example.substring(0, 80)}..."</span>}
+                                                            </div>
+                                                        );
+                                                    })}
                                                 </div>
                                             )}
 
-                                            {Array.isArray(result.bloom_analysis?.flags) && result.bloom_analysis.flags.length > 0 && (
+                                            {result.bloom_analysis.flags?.length > 0 && (
                                                 <div style={{ marginTop: '15px' }}>
                                                     {result.bloom_analysis.flags.map((flag, idx) => (
                                                         <div key={idx} className="flag-item">
@@ -2272,38 +2578,65 @@
                                     </div>
                                 )}
 
-                                {Array.isArray(result.grammar_issues) && result.grammar_issues.length > 0 && (
+                                {result.grammar_issues && result.grammar_issues.length > 0 && (
                                     <div className="v8-section">
                                         <div className="results-section">
                                             <h3>📝 Grammar & Spelling Issues</h3>
-                                            {result.grammar_issues.map((issue, idx) => safeGrammarRender(issue, idx))}
+                                            {result.grammar_issues.map((issue, idx) => (
+                                                <div key={idx} className="grammar-item">
+                                                    <div className="error-type" style={{ color: issue.error_type === 'spelling' ? '#ef4444' : issue.error_type === 'grammar' ? '#f59e0b' : '#3b82f6' }}>
+                                                        {issue.error_type.toUpperCase()}
+                                                    </div>
+                                                    <div className="original">"{issue.original_text}"</div>
+                                                    <div style={{ fontSize: '12px', marginTop: '5px' }}>❌ {issue.issue}</div>
+                                                    <div className="suggestion">✅ {issue.suggestion}</div>
+                                                </div>
+                                            ))}
                                         </div>
                                     </div>
                                 )}
 
-                                {Array.isArray(result.missing_tools) && result.missing_tools.length > 0 && (
+                                {result.missing_tools && result.missing_tools.length > 0 && (
                                     <div className="v8-section">
                                         <div className="results-section">
                                             <h3>🔧 Missing Tools Detected</h3>
-                                            {result.missing_tools.map((tool, idx) => safeToolRender(tool, idx))}
+                                            {result.missing_tools.map((tool, idx) => (
+                                                <div key={idx} className="missing-tool-item">
+                                                    <strong>{tool.tool_name}</strong> <span style={{ color: '#6b7280' }}>({tool.category})</span>
+                                                    <div className="flag-suggestion">💡 {tool.suggestion}</div>
+                                                </div>
+                                            ))}
                                         </div>
                                     </div>
                                 )}
 
-                                {Array.isArray(result.weak_metrics_details) && result.weak_metrics_details.length > 0 && (
+                                {result.weak_metrics_details && result.weak_metrics_details.length > 0 && (
                                     <div className="v8-section">
                                         <div className="results-section">
                                             <h3>📊 Weak Metrics - Need Improvement</h3>
-                                            {result.weak_metrics_details.map((metric, idx) => safeWeakMetricRender(metric, idx))}
+                                            {result.weak_metrics_details.map((metric, idx) => (
+                                                <div key={idx} className="weak-metric-item" style={{ borderLeftColor: '#ef4444' }}>
+                                                    <div className="original">"{metric.bullet_text}"</div>
+                                                    <div style={{ fontSize: '12px', marginTop: '5px' }}>❌ {metric.reason}</div>
+                                                    <div className="suggestion">✅ {metric.fix}</div>
+                                                </div>
+                                            ))}
                                         </div>
                                     </div>
                                 )}
 
-                                {Array.isArray(result.suggested_rewrites) && result.suggested_rewrites.length > 0 && (
+                                {result.suggested_rewrites && result.suggested_rewrites.length > 0 && (
                                     <div className="v8-section">
                                         <div className="results-section">
                                             <h3>✏️ Suggested Rewrites</h3>
-                                            {result.suggested_rewrites.map((rewrite, idx) => safeRewriteRender(rewrite, idx))}
+                                            {result.suggested_rewrites.map((rewrite, idx) => (
+                                                <div key={idx} className="rewrite-item">
+                                                    <div><strong>Original:</strong> "{rewrite.original}"</div>
+                                                    <div style={{ marginTop: '8px' }}>❌ {rewrite.issue}</div>
+                                                    <div style={{ marginTop: '8px', color: '#10b981' }}><strong>Suggested:</strong> "{rewrite.suggested_rewrite}"</div>
+                                                    <div style={{ marginTop: '5px', fontSize: '12px', color: '#6b7280' }}>💡 {rewrite.reason}</div>
+                                                </div>
+                                            ))}
                                         </div>
                                     </div>
                                 )}
@@ -2311,7 +2644,11 @@
                                 <div className="results-grid">
                                     <div className="results-section">
                                         <h3>✅ What's Working Well</h3>
-                                        {safeStrengthsRender()}
+                                        {result.strengths?.length > 0 ? (
+                                            <ul className="strengths-list">
+                                                {result.strengths.map((strength, idx) => (<li key={idx}>{strength}</li>))}
+                                            </ul>
+                                        ) : (<p>No strengths identified</p>)}
 
                                         {result.market_positioning && (
                                             <>
@@ -2321,7 +2658,14 @@
                                             </>
                                         )}
 
-                                        {safeMissingKeywordsRender()}
+                                        {result.missing_keywords?.length > 0 && (
+                                            <>
+                                                <h3 style={{ marginTop: '20px' }}>🔍 Missing Keywords</h3>
+                                                <ul className="missing-keywords-list">
+                                                    {result.missing_keywords.map((keyword, idx) => (<li key={idx}>{keyword}</li>))}
+                                                </ul>
+                                            </>
+                                        )}
 
                                         {result.role_adjustment_note && (
                                             <div style={{ marginTop: '15px', padding: '10px', background: '#e0f2fe', borderRadius: '8px', fontSize: '13px' }}>
@@ -2332,12 +2676,69 @@
 
                                     <div className="results-section">
                                         <h3>🎯 Role Match Scores</h3>
-                                        {safeRoleMatchRender()}
-                                        {safeImmediateFixesRender()}
+                                        {result.role_match?.length > 0 ? (
+                                            <>
+                                                {result.role_match.map((role, idx) => (
+                                                    <div key={idx} className="role-match-item">
+                                                        <span>{role.role}</span>
+                                                        <span className={role.match_percentage >= 80 ? "match-strong" : "match-percentage"}>
+                                                            {role.match_percentage}%
+                                                        </span>
+                                                    </div>
+                                                ))}
+                                                
+                                                {(() => {
+                                                    const disclaimer = getRoleMatchDisclaimer(
+                                                        result.role_match, 
+                                                        result.total_ats_score, 
+                                                        result.semantic_analysis?.position_score || 0
+                                                    );
+                                                    if (disclaimer) {
+                                                        return (
+                                                            <div className={`disclaimer-box ${disclaimer.type}`}>
+                                                                <strong>{disclaimer.title}</strong><br/><br/>
+                                                                <p>{disclaimer.message}</p>
+                                                                <ul style={{ marginTop: '10px', marginLeft: '20px' }}>
+                                                                    {disclaimer.actions.map((action, i) => (<li key={i}>{action}</li>))}
+                                                                </ul>
+                                                                <p style={{ marginTop: '10px', fontWeight: 'bold' }}>→ {disclaimer.callToAction}</p>
+                                                            </div>
+                                                        );
+                                                    }
+                                                    return null;
+                                                })()}
+                                            </>
+                                        ) : (<p>No role matches identified</p>)}
+
+                                        {result.immediate_fixes?.length > 0 && (
+                                            <>
+                                                <h3 style={{ marginTop: '20px' }}>🔧 Immediate Fixes</h3>
+                                                <ul>
+                                                    {result.immediate_fixes.map((fix, idx) => (<li key={idx} style={{ marginBottom: '10px' }}>{fix}</li>))}
+                                                </ul>
+                                            </>
+                                        )}
                                     </div>
                                 </div>
 
-                                {safeAllIssuesRender()}
+                                {result.all_issues?.length > 0 && (
+                                    <div className="results-section" style={{ marginTop: '20px' }}>
+                                        <h3>📋 All Identified Issues ({result.all_issues.length})</h3>
+                                        <table className="issues-table">
+                                            <thead><tr><th>Priority</th><th>Issue</th><th>Location</th><th>How to Fix</th></tr></thead>
+                                            <tbody>
+                                                {result.all_issues.map((issue, idx) => (
+                                                    <tr key={idx}>
+                                                        <td className={`priority-${issue.priority?.toLowerCase() || 'medium'}`}>{issue.priority || 'Medium'}</td>
+                                                        <td><strong>{issue.issue}</strong></td>
+                                                        <td><small style={{ color: '#6b7280' }}>{issue.location || 'General'}</small></td>
+                                                        <td>{issue.fix || issue.suggestion || 'Review and improve'}</td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                )}
 
                                 {result.metric_quality_breakdown && (
                                     <div className="results-section" style={{ marginTop: '20px' }}>
@@ -2400,7 +2801,6 @@
                                     onClick={() => {
                                         setResult(null);
                                         setResumeText('');
-                                        setRawResumeText('');
                                         setResumeFileName('');
                                         setResumeParseError(null);
                                         setResumePdfHealth(null);
@@ -2412,10 +2812,6 @@
                                         setJobDescriptionText('');
                                         setJobDescriptionFileName('');
                                         setJobDescriptionParseError(null);
-                                        setJdSkills([]);
-                                        setJdRoles([]);
-                                        setJdOrgs([]);
-                                        setTokenSavings(0);
                                         setEmail('');
                                         setEmailSent(false);
                                         setShowCredibilityShortExplainer(false);
@@ -2442,55 +2838,6 @@
         }
 
         ReactDOM.render(<ATSScanner />, document.getElementById('root'));
-                                        <button 
-                                    onClick={() => {
-                                        setResult(null);
-                                        setResumeText('');
-                                        setRawResumeText('');
-                                        setResumeFileName('');
-                                        setResumeParseError(null);
-                                        setResumePdfHealth(null);
-                                        setExtractionMethod(null);
-                                        setAzureHealth(null);
-                                        setPdfQuality(null);
-                                        setStructuredResume(null);
-                                        setShowAtsEyeView(false);
-                                        setJobDescriptionText('');
-                                        setJobDescriptionFileName('');
-                                        setJobDescriptionParseError(null);
-                                        setJdSkills([]);
-                                        setJdRoles([]);
-                                        setJdOrgs([]);
-                                        setTokenSavings(0);
-                                        setEmail('');
-                                        setEmailSent(false);
-                                        setShowCredibilityShortExplainer(false);
-                                        setShowPositionExplainer(false);
-                                        setAnalysisStage('');
-                                    }}
-                                    style={{ marginTop: '30px', background: '#6b7280', width: '100%', padding: '16px', borderRadius: '8px', border: 'none', color: 'white', fontWeight: '600', cursor: 'pointer' }}
-                                >
-                                    Scan Another Resume
-                                </button>
-                            </div>
-                        )}
-                    </div>
-
-                    <div className="back-link">
-                        <a href="https://jkh-consulting.keron62.workers.dev/index.html">← Back to JKH Consulting</a>
-                    </div>
-                    
-                    <div className="privacy-note">
-                        🔒 Your resume is sent to a secure proxy for analysis. No data is stored permanently. Analytics help us improve the tool.
-                    </div>
-                </div>
-            );
-        }
-
-        ReactDOM.render(<ATSScanner />, document.getElementById('root'));
-    </script>
-</body>
-</html>
     </script>
 </body>
 </html>
