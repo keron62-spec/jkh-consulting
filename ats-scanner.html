@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ATS Resume Scanner V8.4 | JKH Consulting</title>
+    <title>ATS Resume Scanner V8.5 | JKH Consulting</title>
     <meta name="description" content="Get your resume scored by an AI-powered ATS scanner. Instant feedback on formatting, keywords, and what recruiters actually see.">
     
     <!-- Google Analytics -->
@@ -510,6 +510,40 @@
         .bloom-level-2 { background: #f97316; color: white; }
         .bloom-level-1 { background: #ef4444; color: white; }
 
+        /* JD Keywords Section */
+        .jd-keywords-section {
+            background: #f8fafc;
+            border-radius: 12px;
+            padding: 16px;
+            margin: 15px 0;
+            border: 1px solid #e2e8f0;
+        }
+        .jd-keywords-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: #1a365d;
+            margin-bottom: 10px;
+        }
+        .jd-keyword-badge {
+            display: inline-block;
+            background: #e0e7ff;
+            color: #3730a3;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 12px;
+            margin: 4px 6px 4px 0;
+        }
+        .token-savings-badge {
+            display: inline-block;
+            background: #d1fae5;
+            color: #065f46;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 600;
+            margin-left: 8px;
+        }
+
         .credibility-container {
             background: #f8fafc;
             border-radius: 16px;
@@ -908,6 +942,7 @@
         const STANDARD_WORKER_URL = "https://ats-resume-only.keron62.workers.dev";
         const COMPARE_WORKER_URL = "https://ats-proxy.keron62.workers.dev";
         const AGGREGATOR_URL = "https://ats-aggregator.keron62.workers.dev";
+        const FOUNDRY_URL = "https://ats-foundary.keron62.workers.dev/extract";
         
         // Extraction Pipeline URLs
         const PDFJS_EXTRACT_URL = "https://ats-pdfjs-extract.keron62.workers.dev";
@@ -916,6 +951,9 @@
         
         // Stage 2 Parser
         const STAGE_2_PARSER_URL = "https://ats-stage-2-parser.keron62.workers.dev";
+
+        // Cache key for JD keywords
+        const JD_CACHE_KEY = "jd_keywords_cache";
 
         // ============================================================
         // RESUME BUILDER DATABASE
@@ -956,7 +994,7 @@
         }
 
         // ============================================================
-        // PDF QUALITY ANALYSIS FUNCTION
+        // PDF QUALITY ANALYSIS FUNCTION (FIXED THRESHOLDS)
         // ============================================================
         
         function analyzePDFQuality(text, metadata = {}) {
@@ -964,16 +1002,42 @@
             let score = 100;
             let junkPatterns = [];
             
+            // Check for clean PDF (high letter ratio, no stream operators, no metadata)
+            const numbers = (text.match(/\d/g) || []).length;
+            const letters = (text.match(/[A-Za-z]/g) || []).length;
+            const ratio = letters / (numbers + 1);
+            
+            // If text is very clean, return perfect score early
+            if (ratio > 0.8 && !text.includes('xmp:') && !text.includes('rdf:') && text.length > 500) {
+                return {
+                    score: 100,
+                    is_clean: true,
+                    needs_fallback: false,
+                    issues: [],
+                    junk_patterns: [],
+                    detected_builder: RESUME_BUILDERS['unknown'],
+                    stats: {
+                        total_chars: text.length,
+                        numbers_count: numbers,
+                        letters_count: letters,
+                        junk_estimate_percent: 0,
+                        junk_chars: 0,
+                        clean_chars: letters
+                    },
+                    recommendation: { action: 'none', message: 'PDF quality is excellent. No action needed.' }
+                };
+            }
+            
             const streamPattern = /\b\d+\s+\d+\s+\d+\s+\d+\s+\d+\s+\d+\s+d1\b/g;
             const streamMatches = text.match(streamPattern) || [];
-            if (streamMatches.length > 0) {
+            if (streamMatches.length > 5) {
                 issues.push({
                     type: 'PDF Stream Obfuscation',
                     severity: 'high',
                     message: `Detected ${streamMatches.length} PDF stream operators - common in "Print to PDF" output`,
                     fix: 'Use "Save as PDF" instead of "Print to PDF"'
                 });
-                score -= Math.min(30, streamMatches.length * 5);
+                score -= Math.min(25, streamMatches.length * 3);
                 junkPatterns.push('stream_operators');
             }
             
@@ -984,41 +1048,38 @@
                     message: 'Embedded XMP/RDF metadata detected - adds noise to ATS parsing',
                     fix: 'Export from Microsoft Word directly, not from browser'
                 });
-                score -= 15;
+                score -= 10;
                 junkPatterns.push('metadata');
             }
             
             const randomStringPattern = /\b[A-Z0-9]{4,6}\b/g;
             const randomMatches = text.match(randomStringPattern) || [];
             const suspiciousRandom = randomMatches.filter(s => !isRealWord(s));
-            if (suspiciousRandom.length > 10) {
+            if (suspiciousRandom.length > 20) {
                 issues.push({
                     type: 'Obfuscated Content',
                     severity: 'medium',
                     message: `${suspiciousRandom.length} suspicious short strings detected - PDF may be corrupted`,
                     fix: 'Re-save PDF from original document using "Save As" not "Print"'
                 });
-                score -= 20;
+                score -= 15;
                 junkPatterns.push('random_strings');
             }
             
-            const numbers = (text.match(/\d/g) || []).length;
-            const letters = (text.match(/[A-Za-z]/g) || []).length;
-            const ratio = letters / (numbers + 1);
-            if (ratio < 0.5 && numbers > 200) {
+            if (ratio < 0.4 && numbers > 300) {
                 issues.push({
                     type: 'High Noise Ratio',
                     severity: 'high',
                     message: `High number-to-text ratio (${numbers} numbers vs ${letters} letters) - PDF likely generated incorrectly`,
                     fix: 'Use Microsoft Word → Save as PDF (not Print to PDF)'
                 });
-                score -= 25;
+                score -= 20;
                 junkPatterns.push('high_noise');
             }
             
             const duplicatePattern = /\b(\w+)\s+\1\s+\1\b/g;
             const duplicates = text.match(duplicatePattern) || [];
-            if (duplicates.length > 0) {
+            if (duplicates.length > 10) {
                 issues.push({
                     type: 'Word Duplication',
                     severity: 'low',
@@ -1031,7 +1092,7 @@
             
             const lines = text.split('\n');
             const longLines = lines.filter(l => l.length > 200 && !l.includes('•'));
-            if (longLines.length > 3) {
+            if (longLines.length > 5) {
                 issues.push({
                     type: 'Missing Line Breaks',
                     severity: 'medium',
@@ -1043,7 +1104,7 @@
             }
             
             const corruptedEntities = (text.match(/&amp;|&#39;|&quot;|&lt;|&gt;/g) || []).length;
-            if (corruptedEntities > 5) {
+            if (corruptedEntities > 10) {
                 issues.push({
                     type: 'Corrupted Entities',
                     severity: 'low',
@@ -1061,7 +1122,7 @@
             return {
                 score: score,
                 is_clean: score >= 70,
-                needs_fallback: score < 70,
+                needs_fallback: score < 60,
                 issues: issues,
                 junk_patterns: junkPatterns,
                 detected_builder: detectedBuilder,
@@ -1138,11 +1199,80 @@
             return highlighted;
         }
 
+        // ============================================================
+        // FOUNDRY KEYWORD EXTRACTION
+        // ============================================================
+        
+        async function extractKeywordsWithFoundry(text) {
+            try {
+                const response = await fetch(FOUNDRY_URL, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ text: text })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    // Filter out numbers and short strings from skills
+                    const cleanSkills = (data.skills || []).filter(s => 
+                        s.length > 2 && isNaN(parseFloat(s)) && !s.match(/^\d+$/) && !s.match(/^\$\d+[KMB]?$/)
+                    );
+                    return {
+                        success: true,
+                        skills: cleanSkills,
+                        roles: data.roles || [],
+                        organizations: data.organizations || [],
+                        total_entities: data.total_entities || 0
+                    };
+                }
+                return null;
+            } catch (error) {
+                console.warn("Foundry extraction failed:", error);
+                return null;
+            }
+        }
+
+        // ============================================================
+        // GET CACHED JD KEYWORDS
+        // ============================================================
+        
+        function getCachedJDKeywords(jdText) {
+            try {
+                const cache = localStorage.getItem(JD_CACHE_KEY);
+                if (cache) {
+                    const parsed = JSON.parse(cache);
+                    // Simple hash of JD text
+                    const hash = jdText.substring(0, 200) + jdText.length;
+                    if (parsed.hash === hash && parsed.timestamp > Date.now() - 86400000) { // 24 hour cache
+                        return parsed.keywords;
+                    }
+                }
+            } catch (e) {
+                console.warn("Cache read failed:", e);
+            }
+            return null;
+        }
+        
+        function setCachedJDKeywords(jdText, keywords) {
+            try {
+                const hash = jdText.substring(0, 200) + jdText.length;
+                localStorage.setItem(JD_CACHE_KEY, JSON.stringify({
+                    hash: hash,
+                    keywords: keywords,
+                    timestamp: Date.now()
+                }));
+            } catch (e) {
+                console.warn("Cache write failed:", e);
+            }
+        }
+
         function ATSScanner() {
             const [isComparisonMode, setIsComparisonMode] = useState(false);
             
             // Resume state
             const [resumeText, setResumeText] = useState('');
+            const [rawResumeText, setRawResumeText] = useState('');
             const [resumeFileName, setResumeFileName] = useState('');
             const [resumeParseError, setResumeParseError] = useState(null);
             const [resumePdfHealth, setResumePdfHealth] = useState(null);
@@ -1156,6 +1286,13 @@
             const [jobDescriptionText, setJobDescriptionText] = useState('');
             const [jobDescriptionFileName, setJobDescriptionFileName] = useState('');
             const [jobDescriptionParseError, setJobDescriptionParseError] = useState(null);
+            
+            // Foundry extracted keywords
+            const [jdSkills, setJdSkills] = useState([]);
+            const [jdRoles, setJdRoles] = useState([]);
+            const [jdOrgs, setJdOrgs] = useState([]);
+            const [isExtractingKeywords, setIsExtractingKeywords] = useState(false);
+            const [tokenSavings, setTokenSavings] = useState(0);
             
             const [loading, setLoading] = useState(false);
             const [result, setResult] = useState(null);
@@ -1196,11 +1333,11 @@
             }
             
             function getApplyRecommendation(score) {
-                if (score >= 20) return { text: "🚀 APPLY IMMEDIATELY", context: "Your profile is highly competitive. Top 1% of candidates." };
-                if (score >= 13) return { text: "✅ STRONG YES", context: "You have a solid chance. Top 10% of candidates." };
-                if (score >= 8) return { text: "👍 YES", context: "Your profile is decent. Apply if interested." };
-                if (score >= 3) return { text: "⚠️ 50/50", context: "This role is a long shot. Apply only if you have time." };
-                return { text: "🔴 CONSIDER OTHER ROLES", context: "Target roles at a different level or strengthen your resume first." };
+                if (score >= 20) return { text: "🚀 APPLY IMMEDIATELY", context: "Your profile is highly competitive. Top 1% of candidates. Your resume is perfectly positioned for this role." };
+                if (score >= 13) return { text: "✅ STRONG YES", context: "You have a solid chance. Top 10% of candidates. Your resume aligns well with the role requirements." };
+                if (score >= 8) return { text: "👍 YES", context: "Your profile is decent. Apply if interested. Some minor improvements could increase your chances." };
+                if (score >= 3) return { text: "⚠️ 50/50", context: "This role is a long shot. Apply only if you have time. Consider strengthening your resume first." };
+                return { text: "🔴 CONSIDER OTHER ROLES", context: "Target roles at a different level or strengthen your resume significantly before applying." };
             }
 
             // ============================================================
@@ -1446,11 +1583,13 @@
                     let extractionInfo = null;
                     let azureHealthData = null;
                     let pdfQualityData = null;
+                    let rawText = null;
                     
                     if (file.name.endsWith('.docx') || file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
                         setAnalysisStage('Extracting from Microsoft Word...');
                         const result = await extractWithDocx(file);
                         extractedText = result.text;
+                        rawText = result.text;
                         extractionInfo = { method: 'docx', confidence: result.confidence, pageCount: result.pages };
                         setExtractionMethod('📄 Microsoft Word');
                     }
@@ -1462,6 +1601,7 @@
                             reader.onerror = () => reject(new Error('Failed to read text file'));
                             reader.readAsText(file);
                         });
+                        rawText = extractedText;
                         extractionInfo = { method: 'plain-text', confidence: 100, pageCount: 1 };
                         setExtractionMethod('📄 Plain Text');
                     }
@@ -1469,6 +1609,7 @@
                         setAnalysisStage('Extracting PDF with quality check...');
                         const result = await extractWithQualityCheck(file);
                         extractedText = result.text;
+                        rawText = result.raw_text || result.text;
                         extractionInfo = { 
                             method: result.method, 
                             confidence: result.confidence, 
@@ -1515,6 +1656,9 @@
                         return;
                     }
                     
+                    // Store raw text for ATS Eye View
+                    setRawResumeText(rawText || extractedText);
+                    
                     const healthData = analyzeExtractedHealth(
                         extractedText, 
                         extractionInfo.pageCount, 
@@ -1557,7 +1701,7 @@
             };
 
             // ============================================================
-            // JD UPLOAD HANDLER
+            // JD UPLOAD HANDLER (WITH FOUNDRY KEYWORD EXTRACTION)
             // ============================================================
             
             const handleJobDescriptionFileUpload = async (e) => {
@@ -1609,18 +1753,56 @@
                     }
                     
                     setJobDescriptionText(extractedText);
+                    
+                    // Extract keywords using Foundry
+                    setAnalysisStage('Extracting keywords with Azure Foundry...');
+                    setIsExtractingKeywords(true);
+                    
+                    // Check cache first
+                    let keywords = getCachedJDKeywords(extractedText);
+                    
+                    if (!keywords) {
+                        keywords = await extractKeywordsWithFoundry(extractedText);
+                        if (keywords && keywords.success) {
+                            setCachedJDKeywords(extractedText, keywords);
+                        }
+                    }
+                    
+                    if (keywords && keywords.success) {
+                        setJdSkills(keywords.skills || []);
+                        setJdRoles(keywords.roles || []);
+                        setJdOrgs(keywords.organizations || []);
+                        
+                        // Calculate token savings (full JD ~2000 tokens, keywords ~200 tokens)
+                        const estimatedTokens = Math.ceil(extractedText.length / 4);
+                        const keywordTokens = (keywords.skills.length + keywords.roles.length + keywords.organizations.length) * 6;
+                        const savings = Math.max(0, estimatedTokens - keywordTokens);
+                        setTokenSavings(savings);
+                        
+                        console.log(`✅ Foundry extracted: ${keywords.skills.length} skills, ${keywords.roles.length} roles`);
+                    } else {
+                        console.warn('⚠️ Foundry extraction failed, will use full JD for analysis');
+                        setJdSkills([]);
+                        setJdRoles([]);
+                        setJdOrgs([]);
+                        setTokenSavings(0);
+                    }
+                    
+                    setIsExtractingKeywords(false);
                     setAnalysisStage('');
                     setLoading(false);
                     
                 } catch (error) {
+                    console.error('JD upload error:', error);
                     setJobDescriptionParseError(error.message);
+                    setIsExtractingKeywords(false);
                     setLoading(false);
                     setAnalysisStage('');
                 }
             };
 
             // ============================================================
-            // ANALYZE RESUME
+            // ANALYZE RESUME (WITH FOUNDRY KEYWORDS FOR COMPARISON MODE)
             // ============================================================
             
             const analyzeResume = async () => {
@@ -1698,13 +1880,24 @@
                         setResult(aggregatorData);
                         
                     } else {
+                        // Comparison Mode - Use Foundry keywords if available
+                        setAnalysisStage('Analyzing with AI (using extracted keywords)...');
+                        
                         const workerUrl = COMPARE_WORKER_URL;
+                        
+                        // Build payload with Foundry keywords or fallback to full JD
+                        const hasKeywords = jdSkills.length > 0 || jdRoles.length > 0;
                         
                         const payload = {
                             resume: structuredResume,
                             resumeText: resumeText,
                             resumePdfHealth: resumePdfHealth,
-                            jobDescriptionText: jobDescriptionText
+                            jobDescriptionText: hasKeywords ? null : jobDescriptionText, // Full JD as fallback
+                            jd_keywords: hasKeywords ? {
+                                skills: jdSkills,
+                                roles: jdRoles,
+                                organizations: jdOrgs
+                            } : null
                         };
                         
                         const response = await fetch(workerUrl, {
@@ -1734,6 +1927,8 @@
                             parsedResult.structured_used = !!structuredResume;
                             parsedResult.azure_health = azureHealth;
                             parsedResult.pdf_quality = pdfQuality;
+                            parsedResult.foundry_keywords_used = hasKeywords;
+                            parsedResult.token_savings = tokenSavings;
                             
                             setResult(parsedResult);
                         } else {
@@ -1931,7 +2126,7 @@
             };
 
             // ============================================================
-            // PDF QUALITY WARNING COMPONENT (NEW V8.4)
+            // PDF QUALITY WARNING COMPONENT (FIXED ATS EYE VIEW)
             // ============================================================
             
             const renderPDFQualityWarning = () => {
@@ -1984,19 +2179,22 @@
                         <div className="action-buttons">
                             <button 
                                 className="btn-primary"
-                                onClick={() => setShowAtsEyeView(!showAtsEyeView)}
+                                onClick={(e) => {
+                                    e.preventDefault();
+                                    setShowAtsEyeView(prev => !prev);
+                                }}
                             >
                                 {showAtsEyeView ? 'Hide' : 'Show'} ATS Eye View
                             </button>
                         </div>
                         
-                        {showAtsEyeView && resumeText && (
+                        {showAtsEyeView && rawResumeText && (
                             <div className="comparison-grid">
                                 <div className="before">
                                     <strong>🔴 What the ATS Actually Sees:</strong>
                                     <div className="junk-highlight" 
                                          dangerouslySetInnerHTML={{ 
-                                             __html: highlightJunk(resumeText.substring(0, 2000), pdfQuality.junk_patterns) 
+                                             __html: highlightJunk(rawResumeText.substring(0, 2000), pdfQuality.junk_patterns) 
                                          }} />
                                     <div className="stats">
                                         <span className="bad">🗑️ Junk: {pdfQuality.stats.junk_chars} chars</span>
@@ -2066,10 +2264,122 @@
                 );
             };
 
+            // Render JD Keywords Section
+            const renderJDKeywordsSection = () => {
+                if (!isComparisonMode || (jdSkills.length === 0 && jdRoles.length === 0)) return null;
+                
+                return (
+                    <div className="jd-keywords-section">
+                        <div className="jd-keywords-title">
+                            📋 JD Keywords Extracted
+                            {tokenSavings > 0 && (
+                                <span className="token-savings-badge">💾 Saved ~{tokenSavings} tokens</span>
+                            )}
+                        </div>
+                        {jdSkills.length > 0 && (
+                            <div>
+                                <span style={{ fontSize: '12px', color: '#6b7280' }}>Skills:</span>
+                                {jdSkills.map((skill, i) => (
+                                    <span key={i} className="jd-keyword-badge">{skill}</span>
+                                ))}
+                            </div>
+                        )}
+                        {jdRoles.length > 0 && (
+                            <div style={{ marginTop: '8px' }}>
+                                <span style={{ fontSize: '12px', color: '#6b7280' }}>Roles:</span>
+                                {jdRoles.map((role, i) => (
+                                    <span key={i} className="jd-keyword-badge">{role}</span>
+                                ))}
+                            </div>
+                        )}
+                        {jdOrgs.length > 0 && (
+                            <div style={{ marginTop: '8px' }}>
+                                <span style={{ fontSize: '12px', color: '#6b7280' }}>Organizations:</span>
+                                {jdOrgs.map((org, i) => (
+                                    <span key={i} className="jd-keyword-badge">{org}</span>
+                                ))}
+                            </div>
+                        )}
+                        <div style={{ fontSize: '11px', color: '#6b7280', marginTop: '8px' }}>
+                            🤖 Extracted via Azure Foundry Language Service
+                        </div>
+                    </div>
+                );
+            };
+
+            // Safe render helpers for crash prevention
+            const safeBloomRender = (item, idx) => {
+                let levelClass = '';
+                if (item.level === 6) levelClass = 'bloom-level-6';
+                else if (item.level === 5) levelClass = 'bloom-level-5';
+                else if (item.level === 4) levelClass = 'bloom-level-4';
+                else if (item.level === 3) levelClass = 'bloom-level-3';
+                else if (item.level === 2) levelClass = 'bloom-level-2';
+                else if (item.level === 1) levelClass = 'bloom-level-1';
+                
+                const exampleText = (item.example || "").substring(0, 80);
+                
+                return (
+                    <div key={idx} style={{ marginTop: '8px', fontSize: '13px' }}>
+                        <span className={`level-badge ${levelClass}`}>Level {item.level}</span>
+                        <span> {item.count} bullet{item.count !== 1 ? 's' : ''}</span>
+                        {exampleText && <span style={{ color: '#6b7280', marginLeft: '10px' }}>— "{exampleText}..."</span>}
+                    </div>
+                );
+            };
+
+            const safeGrammarRender = (issue, idx) => {
+                const originalText = (issue.original_text || issue.text || "").replace(/"/g, '');
+                return (
+                    <div key={idx} className="grammar-item">
+                        <div className="error-type" style={{ color: issue.error_type === 'spelling' ? '#ef4444' : issue.error_type === 'grammar' ? '#f59e0b' : '#3b82f6' }}>
+                            {(issue.error_type || 'grammar').toUpperCase()}
+                        </div>
+                        <div className="original">"{originalText}"</div>
+                        <div style={{ fontSize: '12px', marginTop: '5px' }}>❌ {issue.issue || 'Grammar issue detected'}</div>
+                        <div className="suggestion">✅ {issue.suggestion || 'Review and correct'}</div>
+                    </div>
+                );
+            };
+
+            const safeToolRender = (tool, idx) => {
+                const toolName = tool.tool_name || tool.name || "Unknown tool";
+                const category = tool.category || "";
+                return (
+                    <div key={idx} className="missing-tool-item">
+                        <strong>{toolName}</strong> {category && <span style={{ color: '#6b7280' }}>({category})</span>}
+                        <div className="flag-suggestion">💡 {tool.suggestion || 'Add to Skills section if experienced'}</div>
+                    </div>
+                );
+            };
+
+            const safeWeakMetricRender = (metric, idx) => {
+                const bulletText = metric.bullet_text || metric.text || "";
+                return (
+                    <div key={idx} className="weak-metric-item" style={{ borderLeftColor: '#ef4444' }}>
+                        <div className="original">"{bulletText}"</div>
+                        <div style={{ fontSize: '12px', marginTop: '5px' }}>❌ {metric.reason || 'Weak metric detected'}</div>
+                        <div className="suggestion">✅ {metric.fix || 'Add baseline or context'}</div>
+                    </div>
+                );
+            };
+
+            const safeRewriteRender = (rewrite, idx) => {
+                const original = rewrite.original || rewrite.text || "";
+                return (
+                    <div key={idx} className="rewrite-item">
+                        <div><strong>Original:</strong> "{original}"</div>
+                        <div style={{ marginTop: '8px' }}>❌ {rewrite.issue || 'Needs improvement'}</div>
+                        <div style={{ marginTop: '8px', color: '#10b981' }}><strong>Suggested:</strong> "{rewrite.suggested_rewrite || rewrite.suggestion || 'Review and improve'}"</div>
+                        <div style={{ marginTop: '5px', fontSize: '12px', color: '#6b7280' }}>💡 {rewrite.reason || 'Improves clarity and impact'}</div>
+                    </div>
+                );
+            };
+
             return (
                 <div className="container">
                     <div className="header">
-                        <h1>🎯 ATS Resume Scanner V8.4</h1>
+                        <h1>🎯 ATS Resume Scanner V8.5</h1>
                         <p>AI-powered analysis of formatting, keywords, and recruiter psychology</p>
                     </div>
 
@@ -2178,6 +2488,10 @@
                                                     <div>Upload Job Description (.txt, .pdf, .docx)</div>
                                                 </label>
                                                 {jobDescriptionFileName && <div className="file-name">📄 {jobDescriptionFileName}</div>}
+                                                {isExtractingKeywords && <div className="file-name" style={{ color: '#f59e0b' }}>🔍 Extracting keywords...</div>}
+                                                {!isExtractingKeywords && jdSkills.length > 0 && (
+                                                    <div className="file-name" style={{ color: '#10b981' }}>✅ {jdSkills.length} skills extracted</div>
+                                                )}
                                             </div>
                                             {jobDescriptionParseError && <div className="parse-error">⚠️ {jobDescriptionParseError}</div>}
                                             {jobDescriptionText && !jobDescriptionParseError && (
@@ -2214,6 +2528,7 @@
 
                                 {renderAzureHealthSection()}
                                 {renderPDFQualityWarning()}
+                                {renderJDKeywordsSection()}
 
                                 <div className="score-grid">
                                     <div className="score-card">
@@ -2543,23 +2858,7 @@
                                             {result.bloom_analysis.bullets_by_level && result.bloom_analysis.bullets_by_level.length > 0 && (
                                                 <div className="bullets-by-level">
                                                     <strong>Bullets by Cognitive Level:</strong>
-                                                    {result.bloom_analysis.bullets_by_level.map((item, idx) => {
-                                                        let levelClass = '';
-                                                        if (item.level === 6) levelClass = 'bloom-level-6';
-                                                        else if (item.level === 5) levelClass = 'bloom-level-5';
-                                                        else if (item.level === 4) levelClass = 'bloom-level-4';
-                                                        else if (item.level === 3) levelClass = 'bloom-level-3';
-                                                        else if (item.level === 2) levelClass = 'bloom-level-2';
-                                                        else if (item.level === 1) levelClass = 'bloom-level-1';
-                                                        
-                                                        return (
-                                                            <div key={idx} style={{ marginTop: '8px', fontSize: '13px' }}>
-                                                                <span className={`level-badge ${levelClass}`}>Level {item.level}</span>
-                                                                <span> {item.count} bullet{item.count !== 1 ? 's' : ''}</span>
-                                                                {item.example && <span style={{ color: '#6b7280', marginLeft: '10px' }}>— "{item.example.substring(0, 80)}..."</span>}
-                                                            </div>
-                                                        );
-                                                    })}
+                                                    {result.bloom_analysis.bullets_by_level.map((item, idx) => safeBloomRender(item, idx))}
                                                 </div>
                                             )}
 
@@ -2582,16 +2881,7 @@
                                     <div className="v8-section">
                                         <div className="results-section">
                                             <h3>📝 Grammar & Spelling Issues</h3>
-                                            {result.grammar_issues.map((issue, idx) => (
-                                                <div key={idx} className="grammar-item">
-                                                    <div className="error-type" style={{ color: issue.error_type === 'spelling' ? '#ef4444' : issue.error_type === 'grammar' ? '#f59e0b' : '#3b82f6' }}>
-                                                        {issue.error_type.toUpperCase()}
-                                                    </div>
-                                                    <div className="original">"{issue.original_text}"</div>
-                                                    <div style={{ fontSize: '12px', marginTop: '5px' }}>❌ {issue.issue}</div>
-                                                    <div className="suggestion">✅ {issue.suggestion}</div>
-                                                </div>
-                                            ))}
+                                            {result.grammar_issues.map((issue, idx) => safeGrammarRender(issue, idx))}
                                         </div>
                                     </div>
                                 )}
@@ -2600,12 +2890,7 @@
                                     <div className="v8-section">
                                         <div className="results-section">
                                             <h3>🔧 Missing Tools Detected</h3>
-                                            {result.missing_tools.map((tool, idx) => (
-                                                <div key={idx} className="missing-tool-item">
-                                                    <strong>{tool.tool_name}</strong> <span style={{ color: '#6b7280' }}>({tool.category})</span>
-                                                    <div className="flag-suggestion">💡 {tool.suggestion}</div>
-                                                </div>
-                                            ))}
+                                            {result.missing_tools.map((tool, idx) => safeToolRender(tool, idx))}
                                         </div>
                                     </div>
                                 )}
@@ -2614,13 +2899,7 @@
                                     <div className="v8-section">
                                         <div className="results-section">
                                             <h3>📊 Weak Metrics - Need Improvement</h3>
-                                            {result.weak_metrics_details.map((metric, idx) => (
-                                                <div key={idx} className="weak-metric-item" style={{ borderLeftColor: '#ef4444' }}>
-                                                    <div className="original">"{metric.bullet_text}"</div>
-                                                    <div style={{ fontSize: '12px', marginTop: '5px' }}>❌ {metric.reason}</div>
-                                                    <div className="suggestion">✅ {metric.fix}</div>
-                                                </div>
-                                            ))}
+                                            {result.weak_metrics_details.map((metric, idx) => safeWeakMetricRender(metric, idx))}
                                         </div>
                                     </div>
                                 )}
@@ -2629,14 +2908,7 @@
                                     <div className="v8-section">
                                         <div className="results-section">
                                             <h3>✏️ Suggested Rewrites</h3>
-                                            {result.suggested_rewrites.map((rewrite, idx) => (
-                                                <div key={idx} className="rewrite-item">
-                                                    <div><strong>Original:</strong> "{rewrite.original}"</div>
-                                                    <div style={{ marginTop: '8px' }}>❌ {rewrite.issue}</div>
-                                                    <div style={{ marginTop: '8px', color: '#10b981' }}><strong>Suggested:</strong> "{rewrite.suggested_rewrite}"</div>
-                                                    <div style={{ marginTop: '5px', fontSize: '12px', color: '#6b7280' }}>💡 {rewrite.reason}</div>
-                                                </div>
-                                            ))}
+                                            {result.suggested_rewrites.map((rewrite, idx) => safeRewriteRender(rewrite, idx))}
                                         </div>
                                     </div>
                                 )}
@@ -2729,7 +3001,7 @@
                                             <tbody>
                                                 {result.all_issues.map((issue, idx) => (
                                                     <tr key={idx}>
-                                                        <td className={`priority-${issue.priority?.toLowerCase() || 'medium'}`}>{issue.priority || 'Medium'}</td>
+                                                        <td className={`priority-${(issue.priority || 'medium').toLowerCase()}`}>{issue.priority || 'Medium'}</td>
                                                         <td><strong>{issue.issue}</strong></td>
                                                         <td><small style={{ color: '#6b7280' }}>{issue.location || 'General'}</small></td>
                                                         <td>{issue.fix || issue.suggestion || 'Review and improve'}</td>
@@ -2801,6 +3073,7 @@
                                     onClick={() => {
                                         setResult(null);
                                         setResumeText('');
+                                        setRawResumeText('');
                                         setResumeFileName('');
                                         setResumeParseError(null);
                                         setResumePdfHealth(null);
@@ -2812,6 +3085,10 @@
                                         setJobDescriptionText('');
                                         setJobDescriptionFileName('');
                                         setJobDescriptionParseError(null);
+                                        setJdSkills([]);
+                                        setJdRoles([]);
+                                        setJdOrgs([]);
+                                        setTokenSavings(0);
                                         setEmail('');
                                         setEmailSent(false);
                                         setShowCredibilityShortExplainer(false);
